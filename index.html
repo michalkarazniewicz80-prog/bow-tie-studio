@@ -105,12 +105,12 @@ textarea{resize:none!important;overflow:hidden!important;height:auto;transition:
 
 /* Corrected corridor layout: centre stays in normal grid flow and never overlaps cards */
 .workspace{overflow-x:auto}
-.workspace-inner{min-width:1520px}
+.workspace-inner{min-width:1220px}
 .diagram{
   position:relative;
   display:grid;
-  grid-template-columns:minmax(560px,1fr) 320px minmax(560px,1fr);
-  column-gap:56px;
+  grid-template-columns:minmax(460px,1fr) 250px minmax(460px,1fr);
+  column-gap:32px;
   align-items:stretch;
   min-height:680px;
   isolation:isolate;
@@ -140,26 +140,20 @@ textarea{resize:none!important;overflow:hidden!important;height:auto;transition:
 }
 .core-node{position:relative;z-index:4;width:190px}
 .diagram-connectors{z-index:1;overflow:hidden}
-.branch{z-index:3;gap:32px;grid-template-columns:minmax(180px,.7fr) minmax(280px,1.3fr)}
-.right .branch{grid-template-columns:minmax(280px,1.3fr) minmax(180px,.7fr)}
+.branch{z-index:3}
 .branch:after,.right .branch:after{display:none!important}
 .node,.stack,.add-btn,.small-btn{position:relative;z-index:3}
-.barrier-node{padding:10px;border-radius:13px}
-.barrier-node h3{font-size:11px;margin:0 30px 6px 0}
-.barrier-node h3 .tag{display:none}
-.barrier-node input,.barrier-node textarea,.barrier-node select{margin-top:4px;padding:6px 8px;font-size:11.5px;line-height:1.28}
-.barrier-node textarea{min-height:36px}
 @media (max-width:1300px){
-  .workspace-inner{min-width:1400px}
-  .diagram{grid-template-columns:520px 290px 520px;column-gap:42px}
+  .workspace-inner{min-width:1180px}
+  .diagram{grid-template-columns:440px 236px 440px;column-gap:28px}
 }
 @media print{
   .workspace{overflow:visible!important}
   .workspace-inner{min-width:0!important}
   .diagram{
     min-width:0!important;
-    grid-template-columns:minmax(370px,1fr) 200px minmax(370px,1fr)!important;
-    column-gap:22px!important;
+    grid-template-columns:minmax(360px,1fr) 170px minmax(360px,1fr)!important;
+    column-gap:16px!important;
   }
   .center{position:relative!important;inset:auto!important;transform:none!important;padding:30px 0 24px!important}
   .core-node{width:145px!important}
@@ -168,11 +162,7 @@ textarea{resize:none!important;overflow:hidden!important;height:auto;transition:
 
 
 /* Orthogonal barrier routing */
-.diagram-connectors path{opacity:.96;stroke-width:2.4;filter:drop-shadow(0 1px 0 rgba(255,255,255,.85))}
-.diagram-connectors path.center-bus{stroke-width:2.8}
-.diagram-connectors .connector-dot{stroke:none;filter:drop-shadow(0 1px 2px rgba(15,23,42,.18))}
-.diagram-connectors .connector-dot.left{fill:var(--prevent)}
-.diagram-connectors .connector-dot.right{fill:var(--mitigate)}
+.diagram-connectors path{opacity:.92}
 .barrier-node,.pathway-endpoint{isolation:isolate}
 
 </style>
@@ -341,16 +331,16 @@ function drawConnectors(){
     svg.appendChild(path);
   }
 
-  function addDot(x,y,side){
-    const el=document.createElementNS(ns,'circle');
-    el.setAttribute('class',`connector-dot ${side}`);
-    el.setAttribute('cx',x);
-    el.setAttribute('cy',y);
-    el.setAttribute('r',4.2);
-    svg.appendChild(el);
+  function sideAnchorYs(side,count){
+    const topY=py(topRect.top);
+    const h=topRect.height;
+    if(count<=1)return [topY+h/2];
+    const pad=Math.min(18,Math.max(9,h*.18));
+    const usable=Math.max(1,h-pad*2);
+    return Array.from({length:count},(_,i)=>topY+pad+(usable*i/(count-1)));
   }
 
-  function drawLeftPathway(branch,targetY,busX){
+  function drawLeftPathway(branch,targetY){
     const threat=branch.querySelector('.node.threat');
     const barriers=[...branch.querySelectorAll('.barrier-node')];
     if(!threat || !barriers.length)return;
@@ -362,39 +352,34 @@ function drawConnectors(){
     const threatY=py(tr.top+tr.height/2);
     const firstBarrierLeft=Math.min(...brs.map(r=>px(r.left)));
     const lastBarrierRight=Math.max(...brs.map(r=>px(r.right)));
-    const topX=busX;
+    const topX=px(topRect.left);
 
     // Trunk between threat and barrier stack.
-    const inputTrunkX=(threatX+firstBarrierLeft)/2;
+    const inputTrunkX=threatX+Math.max(12,(firstBarrierLeft-threatX)*0.48);
     const barrierYs=brs.map(r=>py(r.top+r.height/2));
     const minBY=Math.min(...barrierYs), maxBY=Math.max(...barrierYs);
 
     addPath([[threatX,threatY],[inputTrunkX,threatY]],'left');
     addPath([[inputTrunkX,Math.min(threatY,minBY)],[inputTrunkX,Math.max(threatY,maxBY)]],'left');
-    addDot(inputTrunkX,threatY,'left');
 
     brs.forEach((r,i)=>{
       const y=barrierYs[i];
       addPath([[inputTrunkX,y],[px(r.left),y]],'left');
-      addDot(inputTrunkX,y,'left');
     });
 
     // Output trunk between barrier stack and top event.
-    const outputTrunkX=(lastBarrierRight+busX)/2;
+    const outputTrunkX=lastBarrierRight+Math.max(16,(topX-lastBarrierRight)*0.48);
     addPath([[outputTrunkX,Math.min(targetY,minBY)],[outputTrunkX,Math.max(targetY,maxBY)]],'left');
 
     brs.forEach((r,i)=>{
       const y=barrierYs[i];
       addPath([[px(r.right),y],[outputTrunkX,y]],'left');
-      addDot(outputTrunkX,y,'left');
     });
 
     addPath([[outputTrunkX,targetY],[topX,targetY]],'left');
-    addDot(outputTrunkX,targetY,'left');
-    addDot(busX,targetY,'left');
   }
 
-  function drawRightPathway(branch,targetY,busX){
+  function drawRightPathway(branch,targetY){
     const consequence=branch.querySelector('.node.consequence');
     const barriers=[...branch.querySelectorAll('.barrier-node')];
     if(!consequence || !barriers.length)return;
@@ -406,63 +391,40 @@ function drawConnectors(){
     const consequenceY=py(cr.top+cr.height/2);
     const firstBarrierLeft=Math.min(...brs.map(r=>px(r.left)));
     const lastBarrierRight=Math.max(...brs.map(r=>px(r.right)));
-    const topX=busX;
+    const topX=px(topRect.right);
 
     const barrierYs=brs.map(r=>py(r.top+r.height/2));
     const minBY=Math.min(...barrierYs), maxBY=Math.max(...barrierYs);
 
     // Input trunk from top event to mitigation barriers.
-    const inputTrunkX=(busX+firstBarrierLeft)/2;
+    const inputTrunkX=topX+Math.max(16,(firstBarrierLeft-topX)*0.48);
     addPath([[topX,targetY],[inputTrunkX,targetY]],'right');
     addPath([[inputTrunkX,Math.min(targetY,minBY)],[inputTrunkX,Math.max(targetY,maxBY)]],'right');
-    addDot(busX,targetY,'right');
-    addDot(inputTrunkX,targetY,'right');
 
     brs.forEach((r,i)=>{
       const y=barrierYs[i];
       addPath([[inputTrunkX,y],[px(r.left),y]],'right');
-      addDot(inputTrunkX,y,'right');
     });
 
     // Output trunk from barriers to consequence.
-    const outputTrunkX=(lastBarrierRight+consequenceX)/2;
+    const outputTrunkX=lastBarrierRight+Math.max(12,(consequenceX-lastBarrierRight)*0.48);
     addPath([[outputTrunkX,Math.min(consequenceY,minBY)],[outputTrunkX,Math.max(consequenceY,maxBY)]],'right');
 
     brs.forEach((r,i)=>{
       const y=barrierYs[i];
       addPath([[px(r.right),y],[outputTrunkX,y]],'right');
-      addDot(outputTrunkX,y,'right');
     });
 
     addPath([[outputTrunkX,consequenceY],[consequenceX,consequenceY]],'right');
-    addDot(outputTrunkX,consequenceY,'right');
   }
 
   const leftBranches=[...document.querySelectorAll('.pathway-branch[data-side="left"]')];
   const rightBranches=[...document.querySelectorAll('.pathway-branch[data-side="right"]')];
-  const branchCenterY=branch=>{
-    const r=branch.getBoundingClientRect();
-    return py(r.top+r.height/2);
-  };
-  const leftTargets=leftBranches.map(branchCenterY);
-  const rightTargets=rightBranches.map(branchCenterY);
-  const topCenterY=py(topRect.top+topRect.height/2);
-  const leftBusX=px(topRect.left)-56;
-  const rightBusX=px(topRect.right)+56;
+  const leftTargets=sideAnchorYs('left',leftBranches.length);
+  const rightTargets=sideAnchorYs('right',rightBranches.length);
 
-  function drawCentralBus(side,busX,topEdgeX,targets){
-    if(!targets.length)return;
-    const minY=Math.min(topCenterY,...targets);
-    const maxY=Math.max(topCenterY,...targets);
-    addPath([[topEdgeX,topCenterY],[busX,topCenterY]],side,'center-bus');
-    addPath([[busX,minY],[busX,maxY]],side,'center-bus');
-    addDot(busX,topCenterY,side);
-  }
-
-  drawCentralBus('left',leftBusX,px(topRect.left),leftTargets);
-  drawCentralBus('right',rightBusX,px(topRect.right),rightTargets);
-  leftBranches.forEach((branch,i)=>drawLeftPathway(branch,leftTargets[i],leftBusX));
-  rightBranches.forEach((branch,i)=>drawRightPathway(branch,rightTargets[i],rightBusX));
+  leftBranches.forEach((branch,i)=>drawLeftPathway(branch,leftTargets[i]));
+  rightBranches.forEach((branch,i)=>drawRightPathway(branch,rightTargets[i]));
 }
 
 
