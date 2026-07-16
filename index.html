@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BowTie Studio</title>
+<style>
+:root{
+  --bg:#f5f7fb;--surface:#ffffff;--surface-2:#f8fafc;--ink:#102033;--muted:#66758a;
+  --line:#dfe6ef;--line-strong:#cbd5e1;--nav:#101827;--nav-2:#162235;
+  --accent:#7c5cff;--accent-2:#5f43e9;--accent-soft:#ede9fe;
+  --hazard:#f7b84b;--hazard-soft:#fff6df;--top:#e0565b;--top-soft:#fff0f1;
+  --prevent:#16856b;--prevent-soft:#e9f8f3;--mitigate:#3f6fd9;--mitigate-soft:#edf3ff;
+  --threat:#c67b18;--threat-soft:#fff5e5;--consequence:#c84d55;--consequence-soft:#fff0f2;
+  --shadow:0 14px 34px rgba(15,23,42,.08);--shadow-sm:0 6px 18px rgba(15,23,42,.07);
+  --radius:18px;--radius-sm:12px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
+button,input,textarea,select{font:inherit}
+.app-shell{min-height:100vh}
+.topbar{position:sticky;top:0;z-index:40;height:72px;background:linear-gradient(135deg,var(--nav),var(--nav-2));color:white;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.08);box-shadow:0 8px 24px rgba(15,23,42,.18)}
+.brand{display:flex;align-items:center;gap:12px}.brand-mark{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#9b8aff,var(--accent));display:grid;place-items:center;font-weight:900;box-shadow:inset 0 0 0 1px rgba(255,255,255,.28)}
+.brand-copy strong{display:block;font-size:16px;letter-spacing:.01em}.brand-copy span{display:block;font-size:12px;color:#b7c3d4;margin-top:2px}
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.btn,.file-label{border:1px solid transparent;border-radius:10px;padding:9px 13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:.18s ease;text-decoration:none}.btn:hover,.file-label:hover{transform:translateY(-1px)}
+.btn-primary{background:linear-gradient(135deg,#9a85ff,var(--accent));color:white;box-shadow:0 8px 20px rgba(124,92,255,.28)}.btn-ghost,.file-label{background:rgba(255,255,255,.08);color:white;border-color:rgba(255,255,255,.1)}.btn-ghost:hover,.file-label:hover{background:rgba(255,255,255,.14)}.btn-danger{background:#7f2630;color:#fff}.file-label input{display:none}
+.page{padding:24px;max-width:1800px;margin:0 auto}
+.hero{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:18px}.hero h1{margin:0;font-size:28px;letter-spacing:-.03em}.hero p{margin:7px 0 0;color:var(--muted);max-width:760px}.summary{display:flex;gap:10px;flex-wrap:wrap}.pill{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:8px 12px;color:var(--muted);font-size:12px;font-weight:700;box-shadow:var(--shadow-sm)}.pill b{color:var(--ink);margin-right:4px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm)}
+.meta-panel{margin-bottom:18px;overflow:hidden}.panel-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--line)}.panel-head h2{margin:0;font-size:15px}.panel-head p{margin:3px 0 0;color:var(--muted);font-size:12px}.collapse-btn{border:1px solid var(--line);background:var(--surface-2);border-radius:9px;padding:7px 10px;cursor:pointer;font-weight:700;color:var(--muted)}
+.meta{padding:18px;display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:14px}.meta.collapsed{display:none}.field label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800;margin:0 0 6px}.field input,.field textarea,.field select,.node input,.node textarea,.node select{width:100%;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);padding:10px 11px;color:var(--ink);outline:none;transition:.18s ease}.field input:focus,.field textarea:focus,.field select:focus,.node input:focus,.node textarea:focus,.node select:focus{background:#fff;border-color:#9d8cff;box-shadow:0 0 0 4px rgba(124,92,255,.1)}.field textarea{min-height:78px;resize:vertical}
+.workspace{overflow:auto;padding:18px}.workspace-inner{min-width:1320px}.workspace-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;padding:0 2px}.workspace-toolbar h2{margin:0;font-size:16px}.workspace-toolbar span{font-size:12px;color:var(--muted)}
+.diagram{display:grid;grid-template-columns:1fr 210px 1fr;gap:26px;align-items:start;min-height:680px}.side{display:flex;flex-direction:column;gap:14px}.section-label{display:flex;align-items:center;gap:9px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}.section-label:after{content:"";height:1px;background:var(--line);flex:1}.pathway-list{display:flex;flex-direction:column;gap:16px}
+.center{position:sticky;top:100px;display:flex;flex-direction:column;align-items:center;gap:18px;padding-top:120px}.core-node{width:190px;text-align:center;border-radius:20px;padding:18px 16px;box-shadow:var(--shadow);position:relative}.core-node h3{margin:0 0 7px;font-size:11px;letter-spacing:.11em}.core-node div{font-size:14px;font-weight:800;line-height:1.35}.hazard{background:linear-gradient(135deg,#ffc966,var(--hazard));color:#4f3500}.top-event{background:linear-gradient(135deg,#ef7277,var(--top));color:#fff}.core-line{width:4px;height:70px;border-radius:99px;background:linear-gradient(var(--hazard),var(--top))}.center:before,.center:after{content:"";position:absolute;top:278px;width:86px;height:2px;background:linear-gradient(90deg,var(--line-strong),#93a2b5)}.center:before{right:100%}.center:after{left:100%}
+.branch{display:grid;grid-template-columns:minmax(190px,.78fr) minmax(285px,1.22fr);gap:14px;align-items:start;position:relative}.right .branch{grid-template-columns:minmax(285px,1.22fr) minmax(190px,.78fr)}.branch:after{content:"";position:absolute;top:38px;left:37%;right:57%;height:2px;background:var(--line-strong);z-index:0}.right .branch:after{left:57%;right:37%}.stack{display:flex;flex-direction:column;gap:10px;z-index:1}
+.node{border:1px solid var(--line);border-radius:16px;padding:14px;background:#fff;box-shadow:var(--shadow-sm);position:relative;overflow:hidden}.node:before{content:"";position:absolute;inset:0 auto 0 0;width:5px}.node h3{margin:0 34px 10px 0;font-size:13px;display:flex;align-items:center;gap:8px}.node h3 .tag{font-size:10px;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:4px 7px;background:var(--surface-2);color:var(--muted)}.node input,.node textarea,.node select{margin-top:7px}.node textarea{min-height:62px;resize:vertical}.threat{background:linear-gradient(180deg,#fff,var(--threat-soft))}.threat:before{background:var(--threat)}.consequence{background:linear-gradient(180deg,#fff,var(--consequence-soft))}.consequence:before{background:var(--consequence)}.preventive{background:linear-gradient(180deg,#fff,var(--prevent-soft))}.preventive:before{background:var(--prevent)}.mitigative{background:linear-gradient(180deg,#fff,var(--mitigate-soft))}.mitigative:before{background:var(--mitigate)}
+.remove{position:absolute;right:10px;top:10px;width:28px;height:28px;border-radius:9px;border:1px solid var(--line);background:#fff;color:#8a2d36;cursor:pointer;font-size:17px;line-height:1}.remove:hover{background:#fff1f2;border-color:#fecdd3}.add-btn{width:100%;border:1px dashed #b7c3d3;background:#fff;color:#506176;border-radius:14px;padding:11px 14px;font-weight:800;cursor:pointer;transition:.18s}.add-btn:hover{border-color:#8b79ff;background:#f7f5ff;color:var(--accent-2)}.small-btn{border:1px dashed var(--line-strong);background:rgba(255,255,255,.72);border-radius:12px;padding:8px 10px;font-size:12px;font-weight:800;color:var(--muted);cursor:pointer}.small-btn:hover{border-color:#8b79ff;color:var(--accent-2)}
+.status-effective{border-color:#8ad8bd!important;background:#f0fbf7!important}.status-degraded{border-color:#f4c76e!important;background:#fff9eb!important}.status-failed{border-color:#f3a2a6!important;background:#fff2f3!important}.status-not-verified{border-color:#c8d0da!important;background:#f8fafc!important}
+.footer-note{margin-top:14px;padding:12px 14px;background:#f8fafc;border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:12px}.print-title{display:none}
+.toast{position:fixed;right:24px;bottom:24px;background:#111827;color:white;padding:12px 15px;border-radius:12px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transform:translateY(10px);transition:.2s;z-index:100}.toast.show{opacity:1;transform:translateY(0)}
+@media(max-width:1100px){.meta{grid-template-columns:repeat(2,1fr)}.hero{flex-direction:column}.topbar{height:auto;min-height:72px;padding:14px 18px}.toolbar{justify-content:flex-end}.page{padding:18px}}
+@media(max-width:700px){.meta{grid-template-columns:1fr}.brand-copy span{display:none}.toolbar .btn span,.toolbar .file-label span{display:none}.page{padding:12px}.hero h1{font-size:23px}}
+@media print{
+  @page{size:A3 landscape;margin:8mm}
+  body{background:white;-webkit-print-color-adjust:exact;print-color-adjust:exact}.topbar,.hero,.panel-head,.workspace-toolbar,.no-print,.remove,.add-btn,.small-btn,.footer-note,.toast{display:none!important}.page{padding:0;max-width:none}.print-title{display:block;font-size:22px;font-weight:900;margin-bottom:8px}.panel{box-shadow:none;border:0}.meta-panel{border:1px solid #aaa;margin-bottom:8px}.meta{padding:8px;gap:8px}.field input,.field textarea,.field select,.node input,.node textarea,.node select{border:0;background:transparent;padding:2px;box-shadow:none;overflow:visible!important;resize:none!important}.field textarea,.node textarea{height:auto!important;min-height:0!important;max-height:none!important;white-space:pre-wrap!important}.node,.meta-panel,.panel,.branch,.stack,.pathway-list{overflow:visible!important}.workspace{padding:0;overflow:visible!important}.workspace-inner{min-width:0}.diagram{grid-template-columns:1fr 150px 1fr;gap:12px;min-height:0}.center{position:relative;top:auto;padding-top:90px}.center:before,.center:after{top:220px;width:36px}.core-node{width:140px;padding:10px;border-radius:12px;box-shadow:none}.core-line{height:42px}.branch{grid-template-columns:minmax(145px,.8fr) minmax(190px,1.2fr);gap:8px}.right .branch{grid-template-columns:minmax(190px,1.2fr) minmax(145px,.8fr)}.node{padding:8px;border-radius:10px;box-shadow:none}.node textarea{min-height:40px}.pathway-list{gap:8px}.stack{gap:6px}.section-label{font-size:10px}
+}
+
+/* Refined SaaS-style visual layer */
+:root{
+  --bg:#f6f7fb;--surface:#ffffff;--surface-2:#fbfcfe;--ink:#172033;--muted:#718096;
+  --line:#e7eaf0;--line-strong:#d7dce5;--nav:#111827;--nav-2:#1f2937;
+  --accent:#6d5dfc;--accent-2:#5746e7;--accent-soft:#f1efff;
+  --shadow:0 18px 45px rgba(27,39,65,.07);--shadow-sm:0 8px 24px rgba(27,39,65,.055);
+  --radius:20px;--radius-sm:12px;
+}
+body{background:
+  radial-gradient(circle at 12% 4%,rgba(109,93,252,.08),transparent 27%),
+  radial-gradient(circle at 88% 18%,rgba(63,111,217,.06),transparent 24%),var(--bg);font-size:14px}
+.topbar{height:68px;padding:0 28px;background:rgba(17,24,39,.94);backdrop-filter:blur(18px);box-shadow:0 10px 30px rgba(15,23,42,.14)}
+.brand-mark{width:36px;height:36px;border-radius:11px;font-size:14px}.brand-copy strong{font-size:15px}.brand-copy span{font-size:11px}
+.btn,.file-label{border-radius:10px;padding:8px 12px;font-size:12px;font-weight:750;letter-spacing:.005em}.btn:hover,.file-label:hover{transform:translateY(-1px);box-shadow:0 7px 18px rgba(15,23,42,.14)}
+.page{padding:30px;max-width:1860px}.hero{margin-bottom:22px;align-items:center}.hero h1{font-size:30px;line-height:1.15}.hero p{font-size:13px;line-height:1.55}.pill{padding:7px 11px;font-size:11px;box-shadow:none;background:rgba(255,255,255,.82);backdrop-filter:blur(10px)}
+.panel{border-color:rgba(215,220,229,.9);box-shadow:var(--shadow)}.meta-panel{background:rgba(255,255,255,.88);backdrop-filter:blur(10px)}
+.panel-head{padding:15px 18px}.panel-head h2{font-size:14px}.panel-head p{font-size:11px}.collapse-btn{font-size:11px;padding:6px 9px}
+.meta{gap:12px;padding:16px}.field label{font-size:10px;letter-spacing:.09em;margin-bottom:5px}
+.field input,.field textarea,.field select,.node input,.node textarea,.node select{
+  font-family:inherit;font-size:12.5px;line-height:1.4;font-weight:450;border-radius:9px;padding:8px 10px;background:#fcfdff;border-color:#e4e8ef;color:#293246;
+}
+.field input::placeholder,.field textarea::placeholder,.node input::placeholder,.node textarea::placeholder{color:#9aa5b5;font-size:12px}
+.field input:focus,.field textarea:focus,.field select:focus,.node input:focus,.node textarea:focus,.node select:focus{border-color:#8b7dfd;box-shadow:0 0 0 3px rgba(109,93,252,.10)}
+.field textarea{min-height:66px}.workspace{padding:20px;background:rgba(255,255,255,.88);backdrop-filter:blur(10px)}.workspace-toolbar h2{font-size:15px}.workspace-toolbar span{font-size:11px}
+.diagram{grid-template-columns:1fr 200px 1fr;gap:24px}.section-label{font-size:10.5px;letter-spacing:.1em}
+.center{top:92px;gap:16px}.core-node{width:180px;border-radius:18px;padding:16px 14px;box-shadow:0 16px 34px rgba(15,23,42,.11)}.core-node h3{font-size:10px}.core-node div{font-size:13px;line-height:1.4}.core-line{height:62px;width:3px}
+.branch{gap:12px}.stack{gap:9px}.node{border-radius:15px;padding:12px 12px 11px;box-shadow:0 8px 20px rgba(15,23,42,.045);transition:.18s ease}.node:hover{transform:translateY(-1px);box-shadow:0 12px 28px rgba(15,23,42,.075)}.node:before{width:4px}.node h3{font-size:12px;margin-bottom:8px}.node h3 .tag{font-size:9px;padding:3px 6px}.node input,.node textarea,.node select{margin-top:6px}.node textarea{min-height:52px}.remove{width:25px;height:25px;border-radius:8px;font-size:15px}.add-btn{font-size:12px;padding:10px 12px}.small-btn{font-size:11px;padding:7px 9px}.footer-note{font-size:11px;line-height:1.5}
+.status-effective,.status-degraded,.status-failed,.status-not-verified{font-weight:650}
+@media print{
+  body{font-size:9pt;background:white}.field input,.field textarea,.field select,.node input,.node textarea,.node select{font-size:8.2pt!important;line-height:1.25!important;padding:2px 3px!important}.node h3{font-size:8.5pt!important}.node h3 .tag{font-size:6.8pt!important}.core-node div{font-size:9pt!important}.core-node h3{font-size:7.5pt!important}.section-label{font-size:7.5pt!important}.node{padding:7px!important;border-radius:8px!important}.meta{padding:7px!important}.field label{font-size:7pt!important}.diagram{gap:12px!important;grid-template-columns:1fr 160px 1fr!important}.core-node{width:145px!important;padding:10px!important}.branch{gap:7px!important}.stack{gap:5px!important}
+}
+
+
+/* Auto-expanding multiline fields */
+textarea{resize:none!important;overflow:hidden!important;height:auto;transition:height .08s ease,border-color .18s ease,box-shadow .18s ease,background .18s ease}
+.field textarea,.node textarea{max-height:none!important}
+
+
+/* Dynamic bow-tie layout and SVG pathways */
+.diagram{position:relative;isolation:isolate;align-items:stretch}
+.diagram-connectors{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;overflow:visible}
+.diagram-connectors path{fill:none;stroke:#b8c2d1;stroke-width:2;stroke-linecap:square;stroke-linejoin:miter;shape-rendering:geometricPrecision;vector-effect:non-scaling-stroke}
+.diagram-connectors path.left-path{stroke:var(--prevent)}
+.diagram-connectors path.right-path{stroke:var(--mitigate)}
+.side{position:relative;z-index:2;min-width:0}
+.pathway-list{flex:1;justify-content:space-around}
+.branch{position:relative;z-index:2}
+.center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;padding-top:0;gap:16px}
+.center:before,.center:after{display:none}
+.core-node{position:relative;z-index:4}
+@media print{
+  .diagram-connectors{display:block!important}
+  .diagram-connectors path{stroke-width:1.4!important}
+  .center{position:absolute!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;padding-top:0!important}
+}
+
+
+/* Corrected corridor layout: centre stays in normal grid flow and never overlaps cards */
+.workspace{overflow-x:auto}
+.workspace-inner{min-width:1220px}
+.diagram{
+  position:relative;
+  display:grid;
+  grid-template-columns:minmax(460px,1fr) 250px minmax(460px,1fr);
+  column-gap:32px;
+  align-items:stretch;
+  min-height:680px;
+  isolation:isolate;
+  overflow:visible;
+}
+.side{position:relative;z-index:2;min-width:0;display:flex;flex-direction:column}
+.pathway-list{
+  flex:1;
+  min-height:540px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-evenly;
+  gap:24px;
+}
+.center{
+  position:relative;
+  inset:auto;
+  transform:none;
+  z-index:3;
+  padding:56px 0 44px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  gap:16px;
+  min-width:0;
+}
+.core-node{position:relative;z-index:4;width:190px}
+.diagram-connectors{z-index:1;overflow:hidden}
+.branch{z-index:3}
+.branch:after,.right .branch:after{display:none!important}
+.node,.stack,.add-btn,.small-btn{position:relative;z-index:3}
+@media (max-width:1300px){
+  .workspace-inner{min-width:1180px}
+  .diagram{grid-template-columns:440px 236px 440px;column-gap:28px}
+}
+@media print{
+  .workspace{overflow:visible!important}
+  .workspace-inner{min-width:0!important}
+  .diagram{
+    min-width:0!important;
+    grid-template-columns:minmax(360px,1fr) 170px minmax(360px,1fr)!important;
+    column-gap:16px!important;
+  }
+  .center{position:relative!important;inset:auto!important;transform:none!important;padding:30px 0 24px!important}
+  .core-node{width:145px!important}
+  .diagram-connectors{overflow:hidden!important}
+}
+
+
+/* Orthogonal barrier routing */
+.diagram-connectors path{opacity:.92}
+.barrier-node,.pathway-endpoint{isolation:isolate}
+
+</style>
+</head>
+<body>
+<div class="app-shell">
+<header class="topbar">
+  <div class="brand"><div class="brand-mark">BT</div><div class="brand-copy"><strong>BowTie Studio</strong><span>Editable barrier risk model</span></div></div>
+  <div class="toolbar">
+    <button class="btn btn-primary" onclick="window.print()">⤓ <span>Print / PDF</span></button>
+    <button class="btn btn-ghost" onclick="exportJSON()">⇩ <span>Export</span></button>
+    <label class="file-label">⇧ <span>Import</span><input type="file" accept="application/json" onchange="importJSON(event)"></label>
+    <button class="btn btn-ghost" onclick="saveLocal()">● <span>Save</span></button>
+    <button class="btn btn-ghost" onclick="loadLocal()">↺ <span>Load</span></button>
+    <button class="btn btn-danger" onclick="resetModel()">× <span>Reset</span></button>
+  </div>
+</header>
+<main class="page">
+  <div class="print-title">Bow-Tie Risk Model</div>
+  <section class="hero">
+    <div><h1>Build and review barrier pathways</h1><p>Capture credible threats, preventive barriers, the top event, mitigative barriers and consequences in one working model.</p></div>
+    <div class="summary"><div class="pill"><b id="threatCount">0</b> threats</div><div class="pill"><b id="barrierCount">0</b> barriers</div><div class="pill"><b id="consequenceCount">0</b> consequences</div></div>
+  </section>
+
+  <section class="panel meta-panel">
+    <div class="panel-head"><div><h2>Model information</h2><p>Define the assessment boundary before building pathways.</p></div><button class="collapse-btn no-print" onclick="toggleMeta()" id="metaToggle">Hide</button></div>
+    <div class="meta" id="metaGrid">
+      <div class="field"><label>Bow-tie title</label><input id="title" value="Loss of Containment – Example"></div>
+      <div class="field"><label>Site / Asset</label><input id="site" placeholder="Plant, unit or equipment"></div>
+      <div class="field"><label>Assessment reference</label><input id="reference" placeholder="e.g. BT-001"></div>
+      <div class="field"><label>Review date</label><input id="reviewDate" type="date"></div>
+      <div class="field"><label>Hazard / energy source</label><textarea id="hazardText">Pressurised or hot hazardous material</textarea></div>
+      <div class="field"><label>Top event</label><textarea id="topText">Loss of control / loss of containment</textarea></div>
+      <div class="field"><label>Scope / assumptions</label><textarea id="scope" placeholder="Operating mode, boundaries and exclusions"></textarea></div>
+      <div class="field"><label>Facilitator / team</label><textarea id="team" placeholder="Names and roles"></textarea></div>
+    </div>
+  </section>
+
+  <section class="panel workspace">
+    <div class="workspace-inner">
+      <div class="workspace-toolbar"><div><h2>Barrier map</h2><span>Each pathway should show the sequence from cause to outcome.</span></div></div>
+      <div class="diagram" id="diagram">
+        <svg class="diagram-connectors" id="connectorLayer" aria-hidden="true"></svg>
+        <div class="side left">
+          <div class="section-label">Threats & preventive barriers</div>
+          <div id="threats" class="pathway-list"></div>
+          <button class="add-btn no-print" onclick="addThreat()">＋ Add threat pathway</button>
+        </div>
+        <div class="center">
+          <div class="core-node hazard"><h3>HAZARD</h3><div id="hazardMirror">Pressurised or hot hazardous material</div></div>
+          <div class="core-line"></div>
+          <div class="core-node top-event" id="topEventNode"><h3>TOP EVENT</h3><div id="topMirror">Loss of control / loss of containment</div></div>
+        </div>
+        <div class="side right">
+          <div class="section-label">Mitigative barriers & consequences</div>
+          <div id="consequences" class="pathway-list"></div>
+          <button class="add-btn no-print" onclick="addConsequence()">＋ Add consequence pathway</button>
+        </div>
+      </div>
+      <div class="footer-note">Use barrier statements that describe a risk-reducing function. Record ownership, assurance, dependencies and known degradation rather than relying on procedure titles alone.</div>
+    </div>
+  </section>
+</main>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+let model={threats:[],consequences:[]};
+const uid=()=>Math.random().toString(36).slice(2,9);
+function esc(s=''){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+function slug(s=''){return s.toLowerCase().replace(/\s+/g,'-')}
+function notify(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800)}
+function newBarrier(type){return{id:uid(),name:type==='preventive'?'Preventive barrier':'Mitigative barrier',owner:'',assurance:'',status:'Effective',notes:''}}
+function addThreat(data){model.threats.push(data||{id:uid(),name:'Threat',description:'',barriers:[newBarrier('preventive')]});render()}
+function addConsequence(data){model.consequences.push(data||{id:uid(),name:'Consequence',description:'',barriers:[newBarrier('mitigative')]});render()}
+function addBarrier(side,id){const arr=side==='threat'?model.threats:model.consequences;const item=arr.find(x=>x.id===id);item.barriers.push(newBarrier(side==='threat'?'preventive':'mitigative'));render()}
+function removeItem(side,id){const key=side==='threat'?'threats':'consequences';model[key]=model[key].filter(x=>x.id!==id);render()}
+function removeBarrier(side,itemId,barrierId){const arr=side==='threat'?model.threats:model.consequences;const item=arr.find(x=>x.id===itemId);item.barriers=item.barriers.filter(x=>x.id!==barrierId);render()}
+function setItem(side,id,key,val){const arr=side==='threat'?model.threats:model.consequences;arr.find(x=>x.id===id)[key]=val}
+function setBarrier(side,itemId,bid,key,val){const arr=side==='threat'?model.threats:model.consequences;arr.find(x=>x.id===itemId).barriers.find(b=>b.id===bid)[key]=val;if(key==='status')render()}
+function barrierHTML(side,item,b,type){return `<div class="node ${type} barrier-node" data-barrier-id="${b.id}" data-barrier-side="${side}"><button class="remove no-print" title="Remove barrier" onclick="removeBarrier('${side}','${item.id}','${b.id}')">×</button>
+<h3>${type==='preventive'?'Preventive barrier':'Mitigative barrier'} <span class="tag">${type==='preventive'?'Prevention':'Mitigation'}</span></h3>
+<input value="${esc(b.name)}" oninput="setBarrier('${side}','${item.id}','${b.id}','name',this.value)" placeholder="Barrier function">
+<input value="${esc(b.owner)}" oninput="setBarrier('${side}','${item.id}','${b.id}','owner',this.value)" placeholder="Owner / accountable role">
+<input value="${esc(b.assurance)}" oninput="setBarrier('${side}','${item.id}','${b.id}','assurance',this.value)" placeholder="Assurance / performance standard">
+<select class="status-${slug(b.status)}" onchange="setBarrier('${side}','${item.id}','${b.id}','status',this.value)">${['Effective','Degraded','Failed','Not verified'].map(x=>`<option ${b.status===x?'selected':''}>${x}</option>`).join('')}</select>
+<textarea oninput="setBarrier('${side}','${item.id}','${b.id}','notes',this.value)" placeholder="Escalation factors, dependencies or evidence">${esc(b.notes)}</textarea></div>`}
+function render(){
+ document.getElementById('threats').innerHTML=model.threats.map(t=>`<div class="branch pathway-branch" data-side="left" data-pathway-id="${t.id}"><div class="node threat pathway-endpoint"><button class="remove no-print" title="Remove threat" onclick="removeItem('threat','${t.id}')">×</button><h3>Threat <span class="tag">Cause</span></h3><input value="${esc(t.name)}" oninput="setItem('threat','${t.id}','name',this.value)"><textarea oninput="setItem('threat','${t.id}','description',this.value)" placeholder="Initiating mechanism or condition">${esc(t.description)}</textarea></div><div class="stack">${t.barriers.map(b=>barrierHTML('threat',t,b,'preventive')).join('')}<button class="small-btn no-print" onclick="addBarrier('threat','${t.id}')">＋ Add preventive barrier</button></div></div>`).join('');
+ document.getElementById('consequences').innerHTML=model.consequences.map(c=>`<div class="branch pathway-branch" data-side="right" data-pathway-id="${c.id}"><div class="stack">${c.barriers.map(b=>barrierHTML('consequence',c,b,'mitigative')).join('')}<button class="small-btn no-print" onclick="addBarrier('consequence','${c.id}')">＋ Add mitigative barrier</button></div><div class="node consequence pathway-endpoint"><button class="remove no-print" title="Remove consequence" onclick="removeItem('consequence','${c.id}')">×</button><h3>Consequence <span class="tag">Outcome</span></h3><input value="${esc(c.name)}" oninput="setItem('consequence','${c.id}','name',this.value)"><textarea oninput="setItem('consequence','${c.id}','description',this.value)" placeholder="Credible outcome and receptors">${esc(c.description)}</textarea></div></div>`).join('');
+ document.getElementById('threatCount').textContent=model.threats.length;document.getElementById('consequenceCount').textContent=model.consequences.length;document.getElementById('barrierCount').textContent=[...model.threats,...model.consequences].reduce((n,x)=>n+x.barriers.length,0);syncMirrors();autoGrowAll();scheduleDiagramLayout();
+}
+function metadata(){return['title','site','reference','reviewDate','hazardText','topText','scope','team'].reduce((o,id)=>(o[id]=document.getElementById(id).value,o),{})}
+function collect(){return{version:2,metadata:metadata(),model:model}}
+function apply(data){if(!data||!data.model)throw new Error('Invalid file');model=data.model;Object.entries(data.metadata||{}).forEach(([k,v])=>{const el=document.getElementById(k);if(el)el.value=v});render()}
+function exportJSON(){const blob=new Blob([JSON.stringify(collect(),null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(document.getElementById('reference').value||'bowtie-model')+'.json';a.click();URL.revokeObjectURL(a.href);notify('JSON exported')}
+function importJSON(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{apply(JSON.parse(r.result));notify('Model imported')}catch(err){alert(err.message)}};r.readAsText(f);e.target.value=''}
+function saveLocal(){localStorage.setItem('editableBowtieModel',JSON.stringify(collect()));notify('Saved in this browser')}
+function loadLocal(){const raw=localStorage.getItem('editableBowtieModel');if(!raw)return alert('No saved bow-tie found.');apply(JSON.parse(raw));notify('Saved model loaded')}
+function resetModel(){if(!confirm('Reset the current bow-tie?'))return;model={threats:[],consequences:[]};addThreat();addConsequence();notify('Model reset')}
+function syncMirrors(){document.getElementById('hazardMirror').textContent=document.getElementById('hazardText').value;document.getElementById('topMirror').textContent=document.getElementById('topText').value}
+function toggleMeta(){const g=document.getElementById('metaGrid');g.classList.toggle('collapsed');document.getElementById('metaToggle').textContent=g.classList.contains('collapsed')?'Show':'Hide'}
+function autoGrowTextarea(el){
+  if(!el) return;
+  el.style.height='auto';
+  const minHeight=parseFloat(getComputedStyle(el).minHeight)||0;
+  el.style.height=Math.max(el.scrollHeight,minHeight)+'px';
+}
+function autoGrowAll(){
+  requestAnimationFrame(()=>{document.querySelectorAll('textarea').forEach(autoGrowTextarea);scheduleDiagramLayout();});
+}
+document.addEventListener('input',e=>{
+  if(e.target && e.target.tagName==='TEXTAREA'){autoGrowTextarea(e.target);scheduleDiagramLayout();}
+});
+window.addEventListener('load',autoGrowAll);
+window.addEventListener('resize',()=>{autoGrowAll();scheduleDiagramLayout();});
+
+
+let diagramLayoutFrame=0;
+function scheduleDiagramLayout(){
+  cancelAnimationFrame(diagramLayoutFrame);
+  diagramLayoutFrame=requestAnimationFrame(()=>requestAnimationFrame(layoutDiagram));
+}
+function layoutDiagram(){
+  const diagram=document.getElementById('diagram');
+  const leftList=document.getElementById('threats');
+  const rightList=document.getElementById('consequences');
+  if(!diagram||!leftList||!rightList)return;
+
+  const measure=list=>{
+    const items=[...list.querySelectorAll(':scope > .pathway-branch')];
+    if(!items.length)return 0;
+    return items.reduce((sum,item)=>sum+item.offsetHeight,0)+Math.max(0,items.length-1)*24;
+  };
+  const required=Math.max(680,measure(leftList)+150,measure(rightList)+150);
+  diagram.style.minHeight=required+'px';
+  const listHeight=Math.max(540,required-96);
+  leftList.style.minHeight=listHeight+'px';
+  rightList.style.minHeight=listHeight+'px';
+  requestAnimationFrame(drawConnectors);
+}
+function drawConnectors(){
+  const diagram=document.getElementById('diagram');
+  const svg=document.getElementById('connectorLayer');
+  const top=document.getElementById('topEventNode');
+  if(!diagram||!svg||!top)return;
+
+  const bounds=diagram.getBoundingClientRect();
+  const topRect=top.getBoundingClientRect();
+  const width=Math.max(1,diagram.clientWidth);
+  const height=Math.max(1,diagram.clientHeight);
+
+  svg.setAttribute('viewBox',`0 0 ${width} ${height}`);
+  svg.setAttribute('preserveAspectRatio','none');
+  svg.innerHTML='';
+
+  const ns='http://www.w3.org/2000/svg';
+  const px=x=>x-bounds.left;
+  const py=y=>y-bounds.top;
+
+  function addPath(points, side, extraClass=''){
+    if(!points || points.length<2)return;
+    const path=document.createElementNS(ns,'path');
+    const commands=points.map((p,i)=>(i?'L':'M')+` ${p[0]} ${p[1]}`).join(' ');
+    path.setAttribute('d',commands);
+    path.setAttribute('class',`${side==='left'?'left-path':'right-path'} ${extraClass}`.trim());
+    svg.appendChild(path);
+  }
+
+  function sideAnchorYs(side,count){
+    const topY=py(topRect.top);
+    const h=topRect.height;
+    if(count<=1)return [topY+h/2];
+    const pad=Math.min(18,Math.max(9,h*.18));
+    const usable=Math.max(1,h-pad*2);
+    return Array.from({length:count},(_,i)=>topY+pad+(usable*i/(count-1)));
+  }
+
+  function drawLeftPathway(branch,targetY){
+    const threat=branch.querySelector('.node.threat');
+    const barriers=[...branch.querySelectorAll('.barrier-node')];
+    if(!threat || !barriers.length)return;
+
+    const tr=threat.getBoundingClientRect();
+    const brs=barriers.map(el=>el.getBoundingClientRect());
+
+    const threatX=px(tr.right);
+    const threatY=py(tr.top+tr.height/2);
+    const firstBarrierLeft=Math.min(...brs.map(r=>px(r.left)));
+    const lastBarrierRight=Math.max(...brs.map(r=>px(r.right)));
+    const topX=px(topRect.left);
+
+    // Trunk between threat and barrier stack.
+    const inputTrunkX=threatX+Math.max(12,(firstBarrierLeft-threatX)*0.48);
+    const barrierYs=brs.map(r=>py(r.top+r.height/2));
+    const minBY=Math.min(...barrierYs), maxBY=Math.max(...barrierYs);
+
+    addPath([[threatX,threatY],[inputTrunkX,threatY]],'left');
+    addPath([[inputTrunkX,Math.min(threatY,minBY)],[inputTrunkX,Math.max(threatY,maxBY)]],'left');
+
+    brs.forEach((r,i)=>{
+      const y=barrierYs[i];
+      addPath([[inputTrunkX,y],[px(r.left),y]],'left');
+    });
+
+    // Output trunk between barrier stack and top event.
+    const outputTrunkX=lastBarrierRight+Math.max(16,(topX-lastBarrierRight)*0.48);
+    addPath([[outputTrunkX,Math.min(targetY,minBY)],[outputTrunkX,Math.max(targetY,maxBY)]],'left');
+
+    brs.forEach((r,i)=>{
+      const y=barrierYs[i];
+      addPath([[px(r.right),y],[outputTrunkX,y]],'left');
+    });
+
+    addPath([[outputTrunkX,targetY],[topX,targetY]],'left');
+  }
+
+  function drawRightPathway(branch,targetY){
+    const consequence=branch.querySelector('.node.consequence');
+    const barriers=[...branch.querySelectorAll('.barrier-node')];
+    if(!consequence || !barriers.length)return;
+
+    const cr=consequence.getBoundingClientRect();
+    const brs=barriers.map(el=>el.getBoundingClientRect());
+
+    const consequenceX=px(cr.left);
+    const consequenceY=py(cr.top+cr.height/2);
+    const firstBarrierLeft=Math.min(...brs.map(r=>px(r.left)));
+    const lastBarrierRight=Math.max(...brs.map(r=>px(r.right)));
+    const topX=px(topRect.right);
+
+    const barrierYs=brs.map(r=>py(r.top+r.height/2));
+    const minBY=Math.min(...barrierYs), maxBY=Math.max(...barrierYs);
+
+    // Input trunk from top event to mitigation barriers.
+    const inputTrunkX=topX+Math.max(16,(firstBarrierLeft-topX)*0.48);
+    addPath([[topX,targetY],[inputTrunkX,targetY]],'right');
+    addPath([[inputTrunkX,Math.min(targetY,minBY)],[inputTrunkX,Math.max(targetY,maxBY)]],'right');
+
+    brs.forEach((r,i)=>{
+      const y=barrierYs[i];
+      addPath([[inputTrunkX,y],[px(r.left),y]],'right');
+    });
+
+    // Output trunk from barriers to consequence.
+    const outputTrunkX=lastBarrierRight+Math.max(12,(consequenceX-lastBarrierRight)*0.48);
+    addPath([[outputTrunkX,Math.min(consequenceY,minBY)],[outputTrunkX,Math.max(consequenceY,maxBY)]],'right');
+
+    brs.forEach((r,i)=>{
+      const y=barrierYs[i];
+      addPath([[px(r.right),y],[outputTrunkX,y]],'right');
+    });
+
+    addPath([[outputTrunkX,consequenceY],[consequenceX,consequenceY]],'right');
+  }
+
+  const leftBranches=[...document.querySelectorAll('.pathway-branch[data-side="left"]')];
+  const rightBranches=[...document.querySelectorAll('.pathway-branch[data-side="right"]')];
+  const leftTargets=sideAnchorYs('left',leftBranches.length);
+  const rightTargets=sideAnchorYs('right',rightBranches.length);
+
+  leftBranches.forEach((branch,i)=>drawLeftPathway(branch,leftTargets[i]));
+  rightBranches.forEach((branch,i)=>drawRightPathway(branch,rightTargets[i]));
+}
+
+
+const printTextareaHeights=new Map();
+function preparePrint(){document.querySelectorAll('textarea').forEach((el,i)=>{printTextareaHeights.set(el,el.style.height);el.style.height='auto';el.style.height=Math.max(el.scrollHeight,24)+'px';el.style.overflow='hidden';});layoutDiagram();drawConnectors();}
+function restoreAfterPrint(){printTextareaHeights.clear();autoGrowAll();}
+window.addEventListener('beforeprint',preparePrint);window.addEventListener('afterprint',restoreAfterPrint);
+document.getElementById('hazardText').addEventListener('input',syncMirrors);document.getElementById('topText').addEventListener('input',syncMirrors);
+addThreat({id:uid(),name:'Overpressure',description:'Pressure exceeds the safe operating envelope.',barriers:[{...newBarrier('preventive'),name:'Independent pressure protection'}]});
+addThreat({id:uid(),name:'Incorrect isolation',description:'Containment opened or equipment started without effective isolation.',barriers:[{...newBarrier('preventive'),name:'Verified positive isolation'}]});
+addConsequence({id:uid(),name:'Personnel exposure',description:'Burns, toxic exposure or impact injury.',barriers:[{...newBarrier('mitigative'),name:'Detection, alarm and emergency response'}]});
+addConsequence({id:uid(),name:'Environmental release',description:'Loss to land, drainage or controlled waters.',barriers:[{...newBarrier('mitigative'),name:'Secondary containment and spill response'}]});
+</script>
+</body>
+</html>
