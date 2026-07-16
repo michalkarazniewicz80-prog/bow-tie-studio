@@ -105,12 +105,12 @@ textarea{resize:none!important;overflow:hidden!important;height:auto;transition:
 
 /* Corrected corridor layout: centre stays in normal grid flow and never overlaps cards */
 .workspace{overflow-x:auto}
-.workspace-inner{min-width:1220px}
+.workspace-inner{min-width:1380px}
 .diagram{
   position:relative;
   display:grid;
-  grid-template-columns:minmax(460px,1fr) 250px minmax(460px,1fr);
-  column-gap:32px;
+  grid-template-columns:minmax(510px,1fr) 285px minmax(510px,1fr);
+  column-gap:44px;
   align-items:stretch;
   min-height:680px;
   isolation:isolate;
@@ -140,20 +140,26 @@ textarea{resize:none!important;overflow:hidden!important;height:auto;transition:
 }
 .core-node{position:relative;z-index:4;width:190px}
 .diagram-connectors{z-index:1;overflow:hidden}
-.branch{z-index:3}
+.branch{z-index:3;gap:22px;grid-template-columns:minmax(170px,.72fr) minmax(250px,1.28fr)}
+.right .branch{grid-template-columns:minmax(250px,1.28fr) minmax(170px,.72fr)}
 .branch:after,.right .branch:after{display:none!important}
 .node,.stack,.add-btn,.small-btn{position:relative;z-index:3}
+.barrier-node{padding:9px 10px 8px;border-radius:12px}
+.barrier-node h3{font-size:11px;margin:0 30px 5px 0}
+.barrier-node h3 .tag{display:none}
+.barrier-node input,.barrier-node textarea,.barrier-node select{margin-top:4px;padding:6px 8px;font-size:11.5px;line-height:1.25}
+.barrier-node textarea{min-height:34px}
 @media (max-width:1300px){
-  .workspace-inner{min-width:1180px}
-  .diagram{grid-template-columns:440px 236px 440px;column-gap:28px}
+  .workspace-inner{min-width:1280px}
+  .diagram{grid-template-columns:480px 260px 480px;column-gap:34px}
 }
 @media print{
   .workspace{overflow:visible!important}
   .workspace-inner{min-width:0!important}
   .diagram{
     min-width:0!important;
-    grid-template-columns:minmax(360px,1fr) 170px minmax(360px,1fr)!important;
-    column-gap:16px!important;
+    grid-template-columns:minmax(360px,1fr) 190px minmax(360px,1fr)!important;
+    column-gap:20px!important;
   }
   .center{position:relative!important;inset:auto!important;transform:none!important;padding:30px 0 24px!important}
   .core-node{width:145px!important}
@@ -379,7 +385,7 @@ function drawConnectors(){
     const topX=px(topRect.left);
 
     // Trunk between threat and barrier stack.
-    const inputTrunkX=threatX+Math.max(12,(firstBarrierLeft-threatX)*0.48);
+    const inputTrunkX=threatX+Math.max(18,(firstBarrierLeft-threatX)*0.5);
     const barrierYs=brs.map(r=>py(r.top+r.height/2));
     const minBY=Math.min(...barrierYs), maxBY=Math.max(...barrierYs);
 
@@ -396,7 +402,7 @@ function drawConnectors(){
     });
 
     // Output trunk between barrier stack and top event.
-    const outputTrunkX=lastBarrierRight+Math.max(16,(topX-lastBarrierRight)*0.48);
+    const outputTrunkX=lastBarrierRight+Math.max(28,(topX-lastBarrierRight)*0.5);
     addPath([[outputTrunkX,Math.min(targetY,minBY)],[outputTrunkX,Math.max(targetY,maxBY)]],'left');
 
     brs.forEach((r,i)=>{
@@ -429,7 +435,7 @@ function drawConnectors(){
     const minBY=Math.min(...barrierYs), maxBY=Math.max(...barrierYs);
 
     // Input trunk from top event to mitigation barriers.
-    const inputTrunkX=topX+Math.max(16,(firstBarrierLeft-topX)*0.48);
+    const inputTrunkX=topX+Math.max(28,(firstBarrierLeft-topX)*0.5);
     addPath([[topX,targetY],[inputTrunkX,targetY]],'right');
     addPath([[inputTrunkX,Math.min(targetY,minBY)],[inputTrunkX,Math.max(targetY,maxBY)]],'right');
 
@@ -444,7 +450,7 @@ function drawConnectors(){
     });
 
     // Output trunk from barriers to consequence.
-    const outputTrunkX=lastBarrierRight+Math.max(12,(consequenceX-lastBarrierRight)*0.48);
+    const outputTrunkX=lastBarrierRight+Math.max(18,(consequenceX-lastBarrierRight)*0.5);
     addPath([[outputTrunkX,Math.min(consequenceY,minBY)],[outputTrunkX,Math.max(consequenceY,maxBY)]],'right');
 
     brs.forEach((r,i)=>{
