@@ -370,7 +370,7 @@ function drawConnectors(){
     return Array.from({length:count},(_,i)=>topY+pad+(usable*i/(count-1)));
   }
 
-  function drawLeftPathway(branch,targetY){
+  function drawLeftPathway(branch,targetY,busX){
     const threat=branch.querySelector('.node.threat');
     const barriers=[...branch.querySelectorAll('.barrier-node')];
     if(!threat || !barriers.length)return;
@@ -382,7 +382,7 @@ function drawConnectors(){
     const threatY=py(tr.top+tr.height/2);
     const firstBarrierLeft=Math.min(...brs.map(r=>px(r.left)));
     const lastBarrierRight=Math.max(...brs.map(r=>px(r.right)));
-    const topX=px(topRect.left);
+    const topX=busX;
 
     // Trunk between threat and barrier stack.
     const inputTrunkX=threatX+Math.max(18,(firstBarrierLeft-threatX)*0.5);
@@ -417,7 +417,7 @@ function drawConnectors(){
     addHandle(topX,targetY,'left');
   }
 
-  function drawRightPathway(branch,targetY){
+  function drawRightPathway(branch,targetY,busX){
     const consequence=branch.querySelector('.node.consequence');
     const barriers=[...branch.querySelectorAll('.barrier-node')];
     if(!consequence || !barriers.length)return;
@@ -429,7 +429,7 @@ function drawConnectors(){
     const consequenceY=py(cr.top+cr.height/2);
     const firstBarrierLeft=Math.min(...brs.map(r=>px(r.left)));
     const lastBarrierRight=Math.max(...brs.map(r=>px(r.right)));
-    const topX=px(topRect.right);
+    const topX=busX;
 
     const barrierYs=brs.map(r=>py(r.top+r.height/2));
     const minBY=Math.min(...barrierYs), maxBY=Math.max(...barrierYs);
@@ -438,6 +438,8 @@ function drawConnectors(){
     const inputTrunkX=topX+Math.max(28,(firstBarrierLeft-topX)*0.5);
     addPath([[topX,targetY],[inputTrunkX,targetY]],'right');
     addPath([[inputTrunkX,Math.min(targetY,minBY)],[inputTrunkX,Math.max(targetY,maxBY)]],'right');
+    addDot(busX,targetY,'right');
+    addDot(inputTrunkX,targetY,'right');
 
     addHandle(topX,targetY,'right');
     addJunction(inputTrunkX,targetY,'right');
@@ -467,11 +469,29 @@ function drawConnectors(){
 
   const leftBranches=[...document.querySelectorAll('.pathway-branch[data-side="left"]')];
   const rightBranches=[...document.querySelectorAll('.pathway-branch[data-side="right"]')];
-  const leftTargets=sideAnchorYs('left',leftBranches.length);
-  const rightTargets=sideAnchorYs('right',rightBranches.length);
+  const branchCenterY=branch=>{
+    const r=branch.getBoundingClientRect();
+    return py(r.top+r.height/2);
+  };
+  const leftTargets=leftBranches.map(branchCenterY);
+  const rightTargets=rightBranches.map(branchCenterY);
+  const topCenterY=py(topRect.top+topRect.height/2);
+  const leftBusX=px(topRect.left)-56;
+  const rightBusX=px(topRect.right)+56;
 
-  leftBranches.forEach((branch,i)=>drawLeftPathway(branch,leftTargets[i]));
-  rightBranches.forEach((branch,i)=>drawRightPathway(branch,rightTargets[i]));
+  function drawCentralBus(side,busX,topEdgeX,targets){
+    if(!targets.length)return;
+    const minY=Math.min(topCenterY,...targets);
+    const maxY=Math.max(topCenterY,...targets);
+    addPath([[topEdgeX,topCenterY],[busX,topCenterY]],side,'center-bus');
+    addPath([[busX,minY],[busX,maxY]],side,'center-bus');
+    addDot(busX,topCenterY,side);
+  }
+
+  drawCentralBus('left',leftBusX,px(topRect.left),leftTargets);
+  drawCentralBus('right',rightBusX,px(topRect.right),rightTargets);
+  leftBranches.forEach((branch,i)=>drawLeftPathway(branch,leftTargets[i],leftBusX));
+  rightBranches.forEach((branch,i)=>drawRightPathway(branch,rightTargets[i],rightBusX));
 }
 
 
