@@ -162,7 +162,13 @@ textarea{resize:none!important;overflow:hidden!important;height:auto;transition:
 
 
 /* Orthogonal barrier routing */
-.diagram-connectors path{opacity:.92}
+.diagram-connectors path{opacity:.96;filter:drop-shadow(0 1px 0 rgba(255,255,255,.85))}
+.diagram-connectors .connector-handle{stroke:#fff;stroke-width:2;filter:drop-shadow(0 1px 2px rgba(15,23,42,.16))}
+.diagram-connectors .connector-handle.left{fill:var(--prevent)}
+.diagram-connectors .connector-handle.right{fill:var(--mitigate)}
+.diagram-connectors .connector-node{fill:#fff;stroke-width:2.2;filter:drop-shadow(0 1px 2px rgba(15,23,42,.14))}
+.diagram-connectors .connector-node.left{stroke:var(--prevent)}
+.diagram-connectors .connector-node.right{stroke:var(--mitigate)}
 .barrier-node,.pathway-endpoint{isolation:isolate}
 
 </style>
@@ -331,6 +337,24 @@ function drawConnectors(){
     svg.appendChild(path);
   }
 
+  function addHandle(x,y,side,kind='square'){
+    const el=document.createElementNS(ns,kind==='circle'?'circle':'rect');
+    el.setAttribute('class',`connector-handle ${side}`);
+    if(kind==='circle'){
+      el.setAttribute('cx',x);el.setAttribute('cy',y);el.setAttribute('r',5);
+    }else{
+      el.setAttribute('x',x-4);el.setAttribute('y',y-4);el.setAttribute('width',8);el.setAttribute('height',8);el.setAttribute('rx',1.5);
+    }
+    svg.appendChild(el);
+  }
+
+  function addJunction(x,y,side){
+    const el=document.createElementNS(ns,'rect');
+    el.setAttribute('class',`connector-node ${side}`);
+    el.setAttribute('x',x-5);el.setAttribute('y',y-5);el.setAttribute('width',10);el.setAttribute('height',10);el.setAttribute('rx',2);
+    svg.appendChild(el);
+  }
+
   function sideAnchorYs(side,count){
     const topY=py(topRect.top);
     const h=topRect.height;
@@ -361,10 +385,14 @@ function drawConnectors(){
 
     addPath([[threatX,threatY],[inputTrunkX,threatY]],'left');
     addPath([[inputTrunkX,Math.min(threatY,minBY)],[inputTrunkX,Math.max(threatY,maxBY)]],'left');
+    addHandle(threatX,threatY,'left');
+    addJunction(inputTrunkX,threatY,'left');
 
     brs.forEach((r,i)=>{
       const y=barrierYs[i];
       addPath([[inputTrunkX,y],[px(r.left),y]],'left');
+      addJunction(inputTrunkX,y,'left');
+      addHandle(px(r.left),y,'left');
     });
 
     // Output trunk between barrier stack and top event.
@@ -374,9 +402,13 @@ function drawConnectors(){
     brs.forEach((r,i)=>{
       const y=barrierYs[i];
       addPath([[px(r.right),y],[outputTrunkX,y]],'left');
+      addHandle(px(r.right),y,'left','circle');
+      addJunction(outputTrunkX,y,'left');
     });
 
     addPath([[outputTrunkX,targetY],[topX,targetY]],'left');
+    addJunction(outputTrunkX,targetY,'left');
+    addHandle(topX,targetY,'left');
   }
 
   function drawRightPathway(branch,targetY){
@@ -401,9 +433,14 @@ function drawConnectors(){
     addPath([[topX,targetY],[inputTrunkX,targetY]],'right');
     addPath([[inputTrunkX,Math.min(targetY,minBY)],[inputTrunkX,Math.max(targetY,maxBY)]],'right');
 
+    addHandle(topX,targetY,'right');
+    addJunction(inputTrunkX,targetY,'right');
+
     brs.forEach((r,i)=>{
       const y=barrierYs[i];
       addPath([[inputTrunkX,y],[px(r.left),y]],'right');
+      addJunction(inputTrunkX,y,'right');
+      addHandle(px(r.left),y,'right');
     });
 
     // Output trunk from barriers to consequence.
@@ -413,9 +450,13 @@ function drawConnectors(){
     brs.forEach((r,i)=>{
       const y=barrierYs[i];
       addPath([[px(r.right),y],[outputTrunkX,y]],'right');
+      addHandle(px(r.right),y,'right','circle');
+      addJunction(outputTrunkX,y,'right');
     });
 
     addPath([[outputTrunkX,consequenceY],[consequenceX,consequenceY]],'right');
+    addJunction(outputTrunkX,consequenceY,'right');
+    addHandle(consequenceX,consequenceY,'right');
   }
 
   const leftBranches=[...document.querySelectorAll('.pathway-branch[data-side="left"]')];
