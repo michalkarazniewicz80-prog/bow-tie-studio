@@ -315,6 +315,8 @@ function drawConnectors(){
   const height=Math.max(1,diagram.clientHeight);
 
   svg.setAttribute('viewBox',`0 0 ${width} ${height}`);
+  svg.setAttribute('width',width);
+  svg.setAttribute('height',height);
   svg.setAttribute('preserveAspectRatio','none');
   svg.innerHTML='';
 
