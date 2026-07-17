@@ -43,7 +43,6 @@ button,input,textarea,select{font:inherit}
 .badge-row{display:flex;gap:5px;flex-wrap:wrap;margin:5px 0}.mini-badge{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:3px 6px;font-size:9.5px;font-weight:800;border:1px solid rgba(15,23,42,.08);background:#fff}.critical-icon{color:#b91c1c}.health-badge{margin-left:auto}.health-healthy{background:#ecfdf5;color:#047857}.health-reduced-resilience{background:#fffbeb;color:#b45309}.health-critical-impairment{background:#fef2f2;color:#b91c1c}.health-not-assessed{background:#f1f5f9;color:#64748b}
 .assurance-panel{margin-top:7px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.7);padding:7px}.assurance-panel summary{cursor:pointer;font-size:11px;font-weight:850;color:var(--muted)}.inspector-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px}.inspector-grid label{font-size:9px;text-transform:uppercase;letter-spacing:.07em;font-weight:800;color:var(--muted)}.inspector-grid .wide{grid-column:1/-1}.prompt{border-left:3px solid #f59e0b;background:#fffbeb;border-radius:8px;padding:7px;margin:7px 0;font-size:11px;color:#713f12}.prompt.critical{border-left-color:#dc2626;background:#fef2f2;color:#7f1d1d}.link-btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 7px;font-size:10.5px;font-weight:800;cursor:pointer;color:var(--accent-2)}
 .dashboard{margin:0 0 18px;padding:14px}.dashboard h2{margin:0 0 10px;font-size:14px}.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px}.metric{border:1px solid var(--line);background:var(--surface-2);border-radius:12px;padding:9px;text-align:left;cursor:pointer}.metric b{display:block;font-size:18px}.metric span{font-size:11px;color:var(--muted);font-weight:800}.validation{margin-top:10px;font-size:12px;color:#92400e}.actions-table{width:100%;border-collapse:collapse;font-size:12px}.actions-table th,.actions-table td{border-top:1px solid var(--line);padding:7px;text-align:left}.actions-table input,.actions-table select,.actions-table textarea{width:100%;border:1px solid var(--line);border-radius:7px;padding:5px;background:#fff}.filtered-out{display:none!important}
-.diagram-connectors path.status-degraded{stroke:#f59e0b}.diagram-connectors path.status-failed{stroke:#dc2626}.diagram-connectors path.status-not-verified{stroke:#94a3b8}
 @media print{.assurance-panel{display:block}.dashboard,.actions-panel{break-inside:avoid}.link-btn{display:none}.metric{padding:5px}.actions-table input,.actions-table select,.actions-table textarea{border:0;background:transparent}}
 
 .footer-note{margin-top:14px;padding:12px 14px;background:#f8fafc;border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:12px}.print-title{display:none}
@@ -241,7 +240,7 @@ textarea{resize:none!important;overflow:hidden!important;height:auto;transition:
   </section>
   <section class="panel actions-panel" style="margin-top:18px">
     <div class="panel-head"><div><h2>Action Register</h2><p>Barrier impairment and assurance review actions generated after confirmation.</p></div><button class="collapse-btn no-print" onclick="createBlankAction()">Add action</button></div>
-    <div class="workspace"><table class="actions-table"><thead><tr><th>Title</th><th>Owner</th><th>Priority</th><th>Target</th><th>Status</th><th>Type</th><th>Linked Barrier</th><th>Threat / Consequence</th><th>Notes</th></tr></thead><tbody id="actionsBody"></tbody></table></div>
+    <div class="workspace"><table class="actions-table"><thead><tr><th>Title</th><th>Owner</th><th>Priority</th><th>Target</th><th>Status</th><th>Type</th><th>Threat / Consequence</th><th>Notes</th></tr></thead><tbody id="actionsBody"></tbody></table></div>
   </section>
 
 </main>
@@ -255,7 +254,6 @@ const ASSURANCE_OPTIONS=['Current','Due Soon','Overdue','No Evidence'];
 const DECISION_OPTIONS=['Not reviewed','Continue','Continue with controls','Suspend'];
 function esc(s=''){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function slug(s=''){return String(s||'').toLowerCase().replace(/\s+/g,'-')}
-function connectorStatusClass(b){return ['Degraded','Failed','Not Verified'].includes(b.status)?'status-'+slug(b.status):''}
 function normStatus(s=''){const v=String(s||'').toLowerCase();if(v==='not verified'||v==='not applicable')return'Not Verified';return s||'Effective'}
 function notify(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800)}
 function newBarrier(type){return normalizeBarrier({id:uid(),name:type==='preventive'?'Preventive barrier':'Mitigative barrier',owner:'',assurance:'',status:'Effective',notes:''})}
@@ -281,7 +279,7 @@ function createActionForBarrier(side,itemId,bid){const arr=side==='threat'?model
 function createBlankAction(){model.actions.push({id:uid(),title:'New action',description:'',owner:'',priority:'Medium',targetDate:'',status:'Open',notes:'',linkedBarrier:'',linkedContext:'',actionType:'Barrier Impairment'});render()}
 function setAction(id,key,val){const a=model.actions.find(x=>x.id===id);if(a){a[key]=val;renderDashboard()}}
 function normalizeActions(){model.actions=(model.actions||[]).map(a=>{delete a['linked'+'Pathway'];delete a['path'+'wayId'];delete a['branch'+'Id'];return Object.assign({linkedContext:''},a)})}
-function renderActions(){normalizeActions();const body=document.getElementById('actionsBody');if(!body)return;body.innerHTML=(model.actions||[]).map(a=>`<tr><td><input value="${esc(a.title)}" oninput="setAction('${a.id}','title',this.value)"><textarea oninput="setAction('${a.id}','description',this.value)">${esc(a.description)}</textarea></td><td><input value="${esc(a.owner)}" oninput="setAction('${a.id}','owner',this.value)"></td><td><select onchange="setAction('${a.id}','priority',this.value)">${['Low','Medium','High','Critical'].map(x=>`<option ${a.priority===x?'selected':''}>${x}</option>`).join('')}</select></td><td><input type="date" value="${esc(a.targetDate)}" oninput="setAction('${a.id}','targetDate',this.value)"></td><td><select onchange="setAction('${a.id}','status',this.value)">${['Open','In Progress','Closed'].map(x=>`<option ${a.status===x?'selected':''}>${x}</option>`).join('')}</select></td><td><select onchange="setAction('${a.id}','actionType',this.value)">${['Barrier Impairment','Assurance Review'].map(x=>`<option ${a.actionType===x?'selected':''}>${x}</option>`).join('')}</select></td><td>${esc(a.linkedBarrier||'Unlinked')}</td><td>${esc(a.linkedContext||'')}</td><td><textarea oninput="setAction('${a.id}','notes',this.value)">${esc(a.notes)}</textarea></td></tr>`).join('')}
+function renderActions(){normalizeActions();const body=document.getElementById('actionsBody');if(!body)return;body.innerHTML=(model.actions||[]).map(a=>`<tr><td><input value="${esc(a.title)}" oninput="setAction('${a.id}','title',this.value)"><textarea oninput="setAction('${a.id}','description',this.value)">${esc(a.description)}</textarea></td><td><input value="${esc(a.owner)}" oninput="setAction('${a.id}','owner',this.value)"></td><td><select onchange="setAction('${a.id}','priority',this.value)">${['Low','Medium','High','Critical'].map(x=>`<option ${a.priority===x?'selected':''}>${x}</option>`).join('')}</select></td><td><input type="date" value="${esc(a.targetDate)}" oninput="setAction('${a.id}','targetDate',this.value)"></td><td><select onchange="setAction('${a.id}','status',this.value)">${['Open','In Progress','Closed'].map(x=>`<option ${a.status===x?'selected':''}>${x}</option>`).join('')}</select></td><td><select onchange="setAction('${a.id}','actionType',this.value)">${['Barrier Impairment','Assurance Review'].map(x=>`<option ${a.actionType===x?'selected':''}>${x}</option>`).join('')}</select></td><td>${esc(a.linkedContext||'')}</td><td><textarea oninput="setAction('${a.id}','notes',this.value)">${esc(a.notes)}</textarea></td></tr>`).join('')}
 function metadata(){return['title','site','reference','reviewDate','hazardText','topText','scope','team'].reduce((o,id)=>(o[id]=document.getElementById(id).value,o),{})}
 function collect(){return{version:3,metadata:metadata(),model:model}}
 function apply(data){if(!data||!data.model)throw new Error('Invalid file');model=data.model;model.actions=model.actions||[];normalizeActions();(model.threats||[]).forEach(t=>t.barriers=(t.barriers||[]).map(normalizeBarrier));(model.consequences||[]).forEach(c=>c.barriers=(c.barriers||[]).map(normalizeBarrier));Object.entries(data.metadata||{}).forEach(([k,v])=>{const el=document.getElementById(k);if(el)el.value=v});render()}
@@ -379,8 +377,7 @@ function drawConnectors(){
 
     brs.forEach((r,i)=>{
       const y=barrierYs[i];
-      const statusClass=connectorStatusClass({status:barriers[i].dataset.status});
-      addPath([[inputTrunkX,y],[px(r.left),y]],'left',statusClass);
+      addPath([[inputTrunkX,y],[px(r.left),y]],'left');
     });
 
     // Output trunk between barrier stack and top event.
@@ -389,8 +386,7 @@ function drawConnectors(){
 
     brs.forEach((r,i)=>{
       const y=barrierYs[i];
-      const statusClass=connectorStatusClass({status:barriers[i].dataset.status});
-      addPath([[px(r.right),y],[outputTrunkX,y]],'left',statusClass);
+      addPath([[px(r.right),y],[outputTrunkX,y]],'left');
     });
 
     addPath([[outputTrunkX,targetY],[topX,targetY]],'left');
@@ -420,8 +416,7 @@ function drawConnectors(){
 
     brs.forEach((r,i)=>{
       const y=barrierYs[i];
-      const statusClass=connectorStatusClass({status:barriers[i].dataset.status});
-      addPath([[inputTrunkX,y],[px(r.left),y]],'right',statusClass);
+      addPath([[inputTrunkX,y],[px(r.left),y]],'right');
     });
 
     // Output trunk from barriers to consequence.
@@ -430,8 +425,7 @@ function drawConnectors(){
 
     brs.forEach((r,i)=>{
       const y=barrierYs[i];
-      const statusClass=connectorStatusClass({status:barriers[i].dataset.status});
-      addPath([[px(r.right),y],[outputTrunkX,y]],'right',statusClass);
+      addPath([[px(r.right),y],[outputTrunkX,y]],'right');
     });
 
     addPath([[outputTrunkX,consequenceY],[consequenceX,consequenceY]],'right');
