@@ -304,6 +304,16 @@ function layoutDiagram(){
   const rightList=document.getElementById('consequences');
   if(!diagram||!leftList||!rightList)return;
 
+  const leftItems=[...leftList.querySelectorAll(':scope > .pathway-branch')];
+  const rightItems=[...rightList.querySelectorAll(':scope > .pathway-branch')];
+  [...leftItems,...rightItems].forEach(item=>{item.style.minHeight=''});
+  Array.from({length:Math.max(leftItems.length,rightItems.length)},(_,i)=>{
+    const pair=[leftItems[i],rightItems[i]].filter(Boolean);
+    if(pair.length<2)return;
+    const h=Math.max(...pair.map(item=>item.offsetHeight));
+    pair.forEach(item=>{item.style.minHeight=h+'px'});
+  });
+
   const measure=list=>{
     const items=[...list.querySelectorAll(':scope > .pathway-branch')];
     if(!items.length)return 0;
