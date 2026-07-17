@@ -246,7 +246,7 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 function esc(s=''){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function slug(s=''){return s.toLowerCase().replace(/\s+/g,'-')}
 function notify(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800)}
-function newBarrier(type){return{id:uid(),name:type==='preventive'?'Preventive barrier':'Mitigative barrier',owner:'',assurance:'',status:'Effective',notes:''}}
+function newBarrier(type){return{id:uid(),name:type==='preventive'?'Preventive barrier':'Mitigative barrier',description:'',owner:'',assurance:'',status:'Effective',notes:''}}
 function addThreat(data){model.threats.push(data||{id:uid(),name:'Threat',description:'',barriers:[newBarrier('preventive')]});render()}
 function addConsequence(data){model.consequences.push(data||{id:uid(),name:'Consequence',description:'',barriers:[newBarrier('mitigative')]});render()}
 function addBarrier(side,id){const arr=side==='threat'?model.threats:model.consequences;const item=arr.find(x=>x.id===id);item.barriers.push(newBarrier(side==='threat'?'preventive':'mitigative'));render()}
@@ -258,7 +258,7 @@ function barrierHTML(side,item,b,type){return `<div class="node ${type} barrier-
 <h3>${type==='preventive'?'Preventive barrier':'Mitigative barrier'} <span class="tag">${type==='preventive'?'Prevention':'Mitigation'}</span></h3>
 <input value="${esc(b.name)}" oninput="setBarrier('${side}','${item.id}','${b.id}','name',this.value)" placeholder="Barrier function">
 <input value="${esc(b.owner)}" oninput="setBarrier('${side}','${item.id}','${b.id}','owner',this.value)" placeholder="Owner / accountable role">
-<input value="${esc(b.assurance)}" oninput="setBarrier('${side}','${item.id}','${b.id}','assurance',this.value)" placeholder="Assurance / performance standard">
+<textarea oninput="setBarrier('${side}','${item.id}','${b.id}','description',this.value)" placeholder="Barrier description">${esc(b.description||'')}</textarea>
 <select class="status-${slug(b.status)}" onchange="setBarrier('${side}','${item.id}','${b.id}','status',this.value)">${['Effective','Degraded','Failed','Not verified'].map(x=>`<option ${b.status===x?'selected':''}>${x}</option>`).join('')}</select>
 <textarea oninput="setBarrier('${side}','${item.id}','${b.id}','notes',this.value)" placeholder="Escalation factors, dependencies or evidence">${esc(b.notes)}</textarea></div>`}
 function render(){
