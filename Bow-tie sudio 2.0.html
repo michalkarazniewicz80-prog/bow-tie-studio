@@ -256,9 +256,9 @@ function setItem(side,id,key,val){const arr=side==='threat'?model.threats:model.
 function setBarrier(side,itemId,bid,key,val){const arr=side==='threat'?model.threats:model.consequences;arr.find(x=>x.id===itemId).barriers.find(b=>b.id===bid)[key]=val;if(key==='status')render()}
 function barrierHTML(side,item,b,type){return `<div class="node ${type} barrier-node" data-barrier-id="${b.id}" data-barrier-side="${side}"><button class="remove no-print" title="Remove barrier" onclick="removeBarrier('${side}','${item.id}','${b.id}')">×</button>
 <h3>${type==='preventive'?'Preventive barrier':'Mitigative barrier'} <span class="tag">${type==='preventive'?'Prevention':'Mitigation'}</span></h3>
+<textarea oninput="setBarrier('${side}','${item.id}','${b.id}','description',this.value)" placeholder="Barrier description">${esc(b.description||'')}</textarea>
 <input value="${esc(b.name)}" oninput="setBarrier('${side}','${item.id}','${b.id}','name',this.value)" placeholder="Barrier function">
 <input value="${esc(b.owner)}" oninput="setBarrier('${side}','${item.id}','${b.id}','owner',this.value)" placeholder="Owner / accountable role">
-<textarea oninput="setBarrier('${side}','${item.id}','${b.id}','description',this.value)" placeholder="Barrier description">${esc(b.description||'')}</textarea>
 <select class="status-${slug(b.status)}" onchange="setBarrier('${side}','${item.id}','${b.id}','status',this.value)">${['Effective','Degraded','Failed','Not verified'].map(x=>`<option ${b.status===x?'selected':''}>${x}</option>`).join('')}</select>
 <textarea oninput="setBarrier('${side}','${item.id}','${b.id}','notes',this.value)" placeholder="Escalation factors, dependencies or evidence">${esc(b.notes)}</textarea></div>`}
 function render(){
@@ -514,10 +514,10 @@ function preparePrint(){document.querySelectorAll('textarea').forEach((el,i)=>{p
 function restoreAfterPrint(){printTextareaHeights.clear();autoGrowAll();}
 window.addEventListener('beforeprint',preparePrint);window.addEventListener('afterprint',restoreAfterPrint);
 document.getElementById('hazardText').addEventListener('input',syncMirrors);document.getElementById('topText').addEventListener('input',syncMirrors);
-addThreat({id:uid(),name:'Overpressure',description:'Pressure exceeds the safe operating envelope.',barriers:[{...newBarrier('preventive'),name:'Independent pressure protection'}]});
-addThreat({id:uid(),name:'Incorrect isolation',description:'Containment opened or equipment started without effective isolation.',barriers:[{...newBarrier('preventive'),name:'Verified positive isolation'}]});
-addConsequence({id:uid(),name:'Personnel exposure',description:'Burns, toxic exposure or impact injury.',barriers:[{...newBarrier('mitigative'),name:'Detection, alarm and emergency response'}]});
-addConsequence({id:uid(),name:'Environmental release',description:'Loss to land, drainage or controlled waters.',barriers:[{...newBarrier('mitigative'),name:'Secondary containment and spill response'}]});
+addThreat({id:uid(),name:'Overpressure',description:'Pressure exceeds the safe operating envelope.',barriers:[{...newBarrier('preventive')}]});
+addThreat({id:uid(),name:'Incorrect isolation',description:'Containment opened or equipment started without effective isolation.',barriers:[{...newBarrier('preventive')}]});
+addConsequence({id:uid(),name:'Personnel exposure',description:'Burns, toxic exposure or impact injury.',barriers:[{...newBarrier('mitigative')}]});
+addConsequence({id:uid(),name:'Environmental release',description:'Loss to land, drainage or controlled waters.',barriers:[{...newBarrier('mitigative')}]});
 </script>
 </body>
 </html>
