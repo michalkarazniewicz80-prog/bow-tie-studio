@@ -98,6 +98,9 @@ textarea{resize:none!important;overflow:hidden!important;height:auto;transition:
 .diagram-connectors path{fill:none;stroke:#b8c2d1;stroke-width:2;stroke-linecap:square;stroke-linejoin:miter;shape-rendering:geometricPrecision;vector-effect:non-scaling-stroke}
 .diagram-connectors path.left-path{stroke:var(--prevent)}
 .diagram-connectors path.right-path{stroke:var(--mitigate)}
+.diagram-connectors .junction-square{width:6px;height:6px;stroke:none;shape-rendering:crispEdges}
+.diagram-connectors .junction-square.left{fill:var(--prevent)}
+.diagram-connectors .junction-square.right{fill:var(--mitigate)}
 .side{position:relative;z-index:2;min-width:0}
 .pathway-list{flex:1;justify-content:space-around}
 .branch{position:relative;z-index:2}
@@ -354,6 +357,23 @@ function drawConnectors(){
     svg.appendChild(path);
   }
 
+  function addJunction(x,y,side){
+    const el=document.createElementNS(ns,'rect');
+    el.setAttribute('x',x-3);
+    el.setAttribute('y',y-3);
+    el.setAttribute('width',6);
+    el.setAttribute('height',6);
+    el.setAttribute('class',`junction-square ${side}`);
+    svg.appendChild(el);
+  }
+
+  function evenlySpacedYs(rects){
+    if(rects.length<=1)return rects.map(r=>py(r.top+r.height/2));
+    const first=py(rects[0].top+rects[0].height/2);
+    const last=py(rects[rects.length-1].top+rects[rects.length-1].height/2);
+    return rects.map((_,i)=>first+((last-first)*i/(rects.length-1)));
+  }
+
   function sideAnchorYs(side,count){
     const topY=py(topRect.top);
     const h=topRect.height;
@@ -378,8 +398,9 @@ function drawConnectors(){
     const topX=px(topRect.left);
 
     // Trunk between threat and barrier stack.
-    const inputTrunkX=threatX+Math.max(12,(firstBarrierLeft-threatX)*0.48);
-    const barrierYs=brs.map(r=>py(r.top+r.height/2));
+    const branchOffset=Math.max(24,Math.min(44,(firstBarrierLeft-threatX)*0.5));
+    const inputTrunkX=threatX+branchOffset;
+    const barrierYs=evenlySpacedYs(brs);
     const minBY=Math.min(...barrierYs), maxBY=Math.max(...barrierYs);
 
     addPath([[threatX,threatY],[inputTrunkX,threatY]],'left');
@@ -388,15 +409,18 @@ function drawConnectors(){
     brs.forEach((r,i)=>{
       const y=barrierYs[i];
       addPath([[inputTrunkX,y],[px(r.left),y]],'left');
+      addJunction(inputTrunkX,y,'left');
     });
 
     // Output trunk between barrier stack and top event.
-    const outputTrunkX=lastBarrierRight+Math.max(16,(topX-lastBarrierRight)*0.48);
+    const topOffset=Math.max(24,Math.min(44,(topX-lastBarrierRight)*0.5));
+    const outputTrunkX=lastBarrierRight+topOffset;
     addPath([[outputTrunkX,Math.min(targetY,minBY)],[outputTrunkX,Math.max(targetY,maxBY)]],'left');
 
     brs.forEach((r,i)=>{
       const y=barrierYs[i];
       addPath([[px(r.right),y],[outputTrunkX,y]],'left');
+      addJunction(outputTrunkX,y,'left');
     });
 
     addPath([[outputTrunkX,targetY],[topX,targetY]],'left');
@@ -416,26 +440,30 @@ function drawConnectors(){
     const lastBarrierRight=Math.max(...brs.map(r=>px(r.right)));
     const topX=px(topRect.right);
 
-    const barrierYs=brs.map(r=>py(r.top+r.height/2));
+    const barrierYs=evenlySpacedYs(brs);
     const minBY=Math.min(...barrierYs), maxBY=Math.max(...barrierYs);
 
     // Input trunk from top event to mitigation barriers.
-    const inputTrunkX=topX+Math.max(16,(firstBarrierLeft-topX)*0.48);
+    const topOffset=Math.max(24,Math.min(44,(firstBarrierLeft-topX)*0.5));
+    const inputTrunkX=topX+topOffset;
     addPath([[topX,targetY],[inputTrunkX,targetY]],'right');
     addPath([[inputTrunkX,Math.min(targetY,minBY)],[inputTrunkX,Math.max(targetY,maxBY)]],'right');
 
     brs.forEach((r,i)=>{
       const y=barrierYs[i];
       addPath([[inputTrunkX,y],[px(r.left),y]],'right');
+      addJunction(inputTrunkX,y,'right');
     });
 
     // Output trunk from barriers to consequence.
-    const outputTrunkX=lastBarrierRight+Math.max(12,(consequenceX-lastBarrierRight)*0.48);
+    const branchOffset=Math.max(24,Math.min(44,(consequenceX-lastBarrierRight)*0.5));
+    const outputTrunkX=lastBarrierRight+branchOffset;
     addPath([[outputTrunkX,Math.min(consequenceY,minBY)],[outputTrunkX,Math.max(consequenceY,maxBY)]],'right');
 
     brs.forEach((r,i)=>{
       const y=barrierYs[i];
       addPath([[px(r.right),y],[outputTrunkX,y]],'right');
+      addJunction(outputTrunkX,y,'right');
     });
 
     addPath([[outputTrunkX,consequenceY],[consequenceX,consequenceY]],'right');
