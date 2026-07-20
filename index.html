@@ -470,38 +470,34 @@ function copyFormValues(source,copy){
     else target.setAttribute('value',field.value);
   });
 }
-function exportStyles(){return [...document.querySelectorAll('style')].map(style=>style.textContent).join('\n')}
-async function diagramExportImage(){
+function exportStyles(){
+  // The source page's print rules deliberately rebuild the editor; do not bring them into the export document.
+  return [...document.querySelectorAll('style')].map(style=>style.textContent.replace(/@media\s+print\s*\{/gi,'@media print-disabled{')).join('\n');
+}
+function diagramExportMarkup(){
   const diagram=document.getElementById('diagram');
   drawConnectors();
-  await new Promise(requestAnimationFrame);
   const crop=unionExportBounds(),clone=diagram.cloneNode(true);
-  clone.querySelectorAll('.no-print,.remove,.add-btn,.small-btn,.connector-handle').forEach(el=>el.remove());
+  clone.querySelectorAll('.no-print,.remove,.add-btn,.small-btn,.connector-handle,.section-label').forEach(el=>el.remove());
   copyFormValues(diagram,clone);
-  const styles=exportStyles();
-  const markup=`<svg xmlns="http://www.w3.org/2000/svg" width="${crop.width}" height="${crop.height}" viewBox="0 0 ${crop.width} ${crop.height}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml"><style>${styles}</style><div style="position:relative;width:${diagram.clientWidth}px;height:${diagram.clientHeight}px;transform:translate(${-crop.left}px,${-crop.top}px);transform-origin:top left">${clone.outerHTML}</div></div></foreignObject></svg>`;
-  const svgURL=URL.createObjectURL(new Blob([markup],{type:'image/svg+xml;charset=utf-8'}));
-  try{
-    const image=new Image();
-    await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=reject;image.src=svgURL});
-    const scale=3,canvas=document.createElement('canvas');canvas.width=Math.ceil(crop.width*scale);canvas.height=Math.ceil(crop.height*scale);
-    const context=canvas.getContext('2d');context.scale(scale,scale);context.drawImage(image,0,0,crop.width,crop.height);
-    return {src:canvas.toDataURL('image/png'),width:crop.width,height:crop.height};
-  }finally{URL.revokeObjectURL(svgURL)}
+  // Preserve the already-calculated editor dimensions and positions. Nothing is laid out from project data here.
+  return {crop,markup:`<div class="diagram-crop" style="width:${crop.width}px;height:${crop.height}px"><div class="diagram-source" style="width:${diagram.clientWidth}px;height:${diagram.clientHeight}px;transform:translate(${-crop.left}px,${-crop.top}px)">${clone.outerHTML}</div></div>`};
 }
 function actionRegisterMarkup(){
   const table=document.querySelector('.actions-panel');if(!table)return '';
   const copy=table.cloneNode(true);copy.querySelectorAll('button').forEach(el=>el.remove());copyFormValues(table,copy);return copy.outerHTML;
 }
-async function printDiagram(){
+function printDiagram(){
   const printWindow=window.open('','_blank');
   if(!printWindow){notify('Allow pop-ups to export the PDF.');return}
   try{
-    const image=await diagramExportImage(),landscape=image.width>=image.height;
+    const exported=diagramExportMarkup(),landscape=exported.crop.width>=exported.crop.height;
+    const pageWidth=landscape?1511:1046,pageHeight=landscape?1046:1511;
+    const scale=Math.min(pageWidth/exported.crop.width,pageHeight/exported.crop.height);
     const pageTitle=document.getElementById('title').value||'Bow-Tie Risk Model';
-    printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(pageTitle)}</title><style>
-      @page{size:A3 ${landscape?'landscape':'portrait'};margin:10mm}*{box-sizing:border-box}body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#172033;-webkit-print-color-adjust:exact;print-color-adjust:exact}.diagram-page{height:calc(100vh - 20mm);display:flex;align-items:center;justify-content:center}.diagram-page img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain}.actions-page{break-before:page;page-break-before:always}.actions-panel{border:0}.panel-head{padding:0 0 10px}.panel-head h2{margin:0;font-size:18px}.panel-head p{margin:4px 0 0;color:#718096;font-size:11px}.workspace{overflow:visible}.actions-table{width:100%;border-collapse:collapse;font-size:9px}.actions-table th,.actions-table td{border:1px solid #d7dce5;padding:5px;text-align:left;vertical-align:top}.actions-table th{background:#f3f5f8}.actions-table input,.actions-table select,.actions-table textarea{width:100%;border:0;background:transparent;font:inherit;padding:0;resize:none}textarea{height:auto;overflow:visible}
-    </style></head><body><section class="diagram-page"><img src="${image.src}" alt="${esc(pageTitle)} bow-tie diagram"></section><section class="actions-page">${actionRegisterMarkup()}</section><script>window.onload=()=>setTimeout(()=>window.print(),100)<\/script></body></html>`);
+    printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(pageTitle)}</title><style>${exportStyles()}
+      @page{size:A3 ${landscape?'landscape':'portrait'};margin:10mm}*{box-sizing:border-box}html,body{margin:0;background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.diagram-page{width:${pageWidth}px;height:${pageHeight}px;display:flex;align-items:center;justify-content:center;overflow:hidden}.diagram-crop{position:relative;overflow:hidden;flex:none;transform:scale(${scale});transform-origin:center}.diagram-source{position:relative;transform-origin:top left}.actions-page{break-before:page;page-break-before:always}.actions-panel{border:0}.actions-panel .panel-head{padding:0 0 10px}.actions-panel .workspace{overflow:visible}.actions-table{width:100%;border-collapse:collapse;font-size:9px}.actions-table th,.actions-table td{border:1px solid #d7dce5;padding:5px;text-align:left;vertical-align:top}.actions-table th{background:#f3f5f8}.actions-table input,.actions-table select,.actions-table textarea{width:100%;border:0;background:transparent;font:inherit;padding:0;resize:none}textarea{height:auto;overflow:visible}
+    </style></head><body><section class="diagram-page" id="diagramPage">${exported.markup}</section><section class="actions-page">${actionRegisterMarkup()}</section><script>window.onload=()=>setTimeout(()=>window.print(),100)<\/script></body></html>`);
     printWindow.document.close();
   }catch(error){printWindow.close();console.error(error);notify('Unable to prepare the diagram for export.');}
 }
