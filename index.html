@@ -154,11 +154,10 @@ textarea{resize:none!important;overflow:hidden!important;height:auto;transition:
 .branch:after,.right .branch:after{display:none!important}
 .pathway-endpoint{position:absolute;left:0;top:50%;width:var(--pathway-card-width);min-height:172px;transform:translateY(-50%);z-index:3}
 .right .pathway-endpoint{left:auto;right:0}
-.stack{position:absolute;inset:0;z-index:3;display:block!important}
-.barrier-node{position:absolute;z-index:3;width:var(--pathway-card-width);min-height:172px;margin:0!important;transform:translate(-50%,-50%);cursor:grab;touch-action:none}
+.stack{position:absolute;inset:0;z-index:3;display:block!important;pointer-events:none}
+.barrier-node{position:absolute;z-index:5;width:var(--pathway-card-width);min-height:172px;margin:0!important;transform:translate(-50%,-50%);cursor:grab;touch-action:none;pointer-events:auto}
 .barrier-node.dragging{cursor:grabbing;z-index:5}
-.small-btn{position:absolute;z-index:4;bottom:0;right:0}
-.right .small-btn{left:0;right:auto}
+.small-btn{position:absolute;z-index:6;transform:translateX(-50%);pointer-events:auto}
 
 /* Barrier cards deliberately stay compact so several can sit along a single pathway. */
 .barrier-node{border-radius:8px!important;padding:7px 8px 7px 10px!important;box-shadow:0 4px 12px rgba(15,23,42,.07)!important}
@@ -381,7 +380,7 @@ function drawConnectors(){
   const ns='http://www.w3.org/2000/svg',px=x=>x-bounds.left,py=y=>y-bounds.top;
   const addPath=(points,side)=>{const path=document.createElementNS(ns,'path');path.setAttribute('d',points.map((p,i)=>(i?'L':'M')+` ${p[0]} ${p[1]}`).join(' '));path.setAttribute('class',side==='left'?'left-path':'right-path');svg.appendChild(path)};
   const anchors=count=>{const topY=py(topRect.top),h=topRect.height;if(count<=1)return[topY+h/2];const pad=Math.min(18,Math.max(9,h*.18)),usable=Math.max(1,h-pad*2);return Array.from({length:count},(_,i)=>topY+pad+usable*i/(count-1))};
-  const positionBarriers=(branch,start,end)=>{const branchRect=branch.getBoundingClientRect(),barriers=[...branch.querySelectorAll('.barrier-node')],step=1/(barriers.length+1);branch._pathwayGeometry={start,end};barriers.forEach((barrier,index)=>{const ratio=manualBarrierPositions.get(barrier.dataset.barrierId)??(index+1)*step,x=start[0]+(end[0]-start[0])*ratio,y=start[1]+(end[1]-start[1])*ratio;barrier.style.left=(x-px(branchRect.left))+'px';barrier.style.top=(y-py(branchRect.top))+'px'})};
+  const positionBarriers=(branch,start,end)=>{const branchRect=branch.getBoundingClientRect(),barriers=[...branch.querySelectorAll('.barrier-node')],length=Math.hypot(end[0]-start[0],end[1]-start[1])||1,edge=Math.min(.18,Math.max(.08,(118/2+18)/length)),span=1-edge*2;branch._pathwayGeometry={start,end,edge};barriers.forEach((barrier,index)=>{const defaultRatio=edge+span*(index+1)/(barriers.length+1),ratio=Math.max(edge,Math.min(1-edge,manualBarrierPositions.get(barrier.dataset.barrierId)??defaultRatio)),x=start[0]+(end[0]-start[0])*ratio,y=start[1]+(end[1]-start[1])*ratio;barrier.style.left=(x-px(branchRect.left))+'px';barrier.style.top=(y-py(branchRect.top))+'px'});const addButton=branch.querySelector('.small-btn'),last=barriers.at(-1);if(addButton&&last){addButton.style.left=last.style.left;addButton.style.top=(parseFloat(last.style.top)+last.offsetHeight/2+8)+'px';addButton.style.bottom='auto';addButton.style.right='auto'}};
   const drawLeft=(branch,targetY)=>{const node=branch.querySelector('.node.threat');if(!node)return;const rect=node.getBoundingClientRect(),start=[px(rect.right),py(rect.top+rect.height/2)],end=[px(topRect.left),targetY];positionBarriers(branch,start,end);addPath([start,end],'left')};
   const drawRight=(branch,targetY)=>{const node=branch.querySelector('.node.consequence');if(!node)return;const rect=node.getBoundingClientRect(),start=[px(topRect.right),targetY],end=[px(rect.left),py(rect.top+rect.height/2)];positionBarriers(branch,start,end);addPath([start,end],'right')};
   const leftBranches=[...document.querySelectorAll('.pathway-branch[data-side="left"]')],rightBranches=[...document.querySelectorAll('.pathway-branch[data-side="right"]')];
@@ -394,10 +393,10 @@ function constrainBarrierRatio(barrier,ratio){
   if(!branch||!geometry)return ratio;
   const barriers=[...branch.querySelectorAll('.barrier-node')];
   const length=Math.hypot(geometry.end[0]-geometry.start[0],geometry.end[1]-geometry.start[1])||1;
-  const gap=Math.min(.24,Math.max(.08,(barrier.offsetWidth+18)/length));
-  const positions=barriers.map((item,index)=>({item,ratio:manualBarrierPositions.get(item.dataset.barrierId)??(index+1)/(barriers.length+1)})).filter(item=>item.item!==barrier).sort((a,b)=>a.ratio-b.ratio);
+  const edge=geometry.edge??Math.min(.18,Math.max(.08,(barrier.offsetWidth/2+18)/length)),gap=Math.min(.24,Math.max(.08,(barrier.offsetWidth+18)/length));
+  const positions=barriers.map((item,index)=>({item,ratio:manualBarrierPositions.get(item.dataset.barrierId)??edge+(1-edge*2)*(index+1)/(barriers.length+1)})).filter(item=>item.item!==barrier).sort((a,b)=>a.ratio-b.ratio);
   const before=positions.filter(item=>item.ratio<ratio).at(-1),after=positions.find(item=>item.ratio>=ratio);
-  const lower=before?before.ratio+gap:.08,upper=after?after.ratio-gap:.92;
+  const lower=before?before.ratio+gap:edge,upper=after?after.ratio-gap:1-edge;
   return Math.min(upper,Math.max(lower,ratio));
 }
 function updateDraggedBarrier(event){
