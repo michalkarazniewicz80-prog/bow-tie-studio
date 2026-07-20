@@ -169,12 +169,14 @@ textarea{resize:none!important;overflow:hidden!important;height:auto;transition:
 .barrier-node .mini-badge{font-size:8px!important;padding:2px 4px!important}
 .barrier-node .compact-check{margin-top:4px!important;font-size:9px!important;gap:4px}
 .barrier-node .remove{right:5px;top:5px;width:18px;height:18px;border-radius:5px;font-size:12px}
+.barrier-node:hover{transform:translate(-50%,-50%)!important;box-shadow:0 12px 28px rgba(15,23,42,.075)!important}
 .pathway-endpoint{border-radius:8px!important;padding:7px 8px 7px 10px!important;box-shadow:0 4px 12px rgba(15,23,42,.07)!important}
 .pathway-endpoint:before{width:3px!important}
 .pathway-endpoint h3{font-size:9px!important;line-height:1.2!important;margin:0 20px 4px 0!important;display:block!important}
 .pathway-endpoint h3 .tag,.pathway-endpoint .health-badge{display:none}
 .pathway-endpoint input,.pathway-endpoint textarea{font-size:10px!important;line-height:1.2!important;margin-top:4px!important;padding:5px 6px!important;border-radius:6px!important}
 .pathway-endpoint textarea{min-height:52px!important}
+.pathway-endpoint:hover{transform:translateY(-50%)!important;box-shadow:0 12px 28px rgba(15,23,42,.075)!important}
 @media (max-width:1300px){
   .workspace-inner{min-width:1180px}
   .diagram{grid-template-columns:minmax(var(--pathway-side-width),1fr) 236px minmax(var(--pathway-side-width),1fr);column-gap:28px}
@@ -354,7 +356,12 @@ function layoutDiagram(){
   const maxBarrierCount=Math.max(1,...pathways.map(item=>item.querySelectorAll('.barrier-node').length));
   // Give every barrier its own horizontal slot plus clearance, rather than letting cards overlap.
   diagram.style.setProperty('--pathway-side-width',Math.max(460,118+(maxBarrierCount+1)*132)+'px');
-  const pathwayHeight=item=>Math.max(300,180+item.querySelectorAll('.barrier-node').length*108);
+  const pathwayHeight=item=>{
+    const cards=[...item.querySelectorAll('.barrier-node,.pathway-endpoint')];
+    const tallestCard=Math.max(172,...cards.map(card=>card.offsetHeight));
+    // Two full card heights keep the diagonal portion of this route clear of its neighbours.
+    return Math.max(420,tallestCard*2+64,192+item.querySelectorAll('.barrier-node').length*120);
+  };
   // Pathways reserve only their own space; opposing rows never determine their geometry.
   pathways.forEach(item=>{item.style.minHeight=pathwayHeight(item)+'px'});
   const measure=list=>{
