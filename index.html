@@ -115,9 +115,11 @@ textarea{resize:none!important;overflow:hidden!important;height:auto;transition:
 .workspace{overflow-x:auto}
 .workspace-inner{min-width:1220px}
 .diagram{
+  --pathway-card-width:118px;
+  --pathway-side-width:460px;
   position:relative;
   display:grid;
-  grid-template-columns:minmax(460px,1fr) 250px minmax(460px,1fr);
+  grid-template-columns:minmax(var(--pathway-side-width),1fr) 250px minmax(var(--pathway-side-width),1fr);
   column-gap:32px;
   align-items:stretch;
   min-height:680px;
@@ -150,10 +152,10 @@ textarea{resize:none!important;overflow:hidden!important;height:auto;transition:
 .diagram-connectors{z-index:1;overflow:hidden}
 .branch{z-index:3;display:block!important;min-height:164px;isolation:isolate}
 .branch:after,.right .branch:after{display:none!important}
-.pathway-endpoint{position:absolute;left:0;top:50%;width:min(43%,210px);transform:translateY(-50%);z-index:3}
+.pathway-endpoint{position:absolute;left:0;top:50%;width:var(--pathway-card-width);min-height:172px;transform:translateY(-50%);z-index:3}
 .right .pathway-endpoint{left:auto;right:0}
 .stack{position:absolute;inset:0;z-index:3;display:block!important}
-.barrier-node{position:absolute;z-index:3;width:138px;margin:0!important;transform:translate(-50%,-50%)}
+.barrier-node{position:absolute;z-index:3;width:var(--pathway-card-width);min-height:172px;margin:0!important;transform:translate(-50%,-50%)}
 .small-btn{position:absolute;z-index:4;bottom:0;right:0}
 .right .small-btn{left:0;right:auto}
 
@@ -167,16 +169,22 @@ textarea{resize:none!important;overflow:hidden!important;height:auto;transition:
 .barrier-node .mini-badge{font-size:8px!important;padding:2px 4px!important}
 .barrier-node .compact-check{margin-top:4px!important;font-size:9px!important;gap:4px}
 .barrier-node .remove{right:5px;top:5px;width:18px;height:18px;border-radius:5px;font-size:12px}
+.pathway-endpoint{border-radius:8px!important;padding:7px 8px 7px 10px!important;box-shadow:0 4px 12px rgba(15,23,42,.07)!important}
+.pathway-endpoint:before{width:3px!important}
+.pathway-endpoint h3{font-size:9px!important;line-height:1.2!important;margin:0 20px 4px 0!important;display:block!important}
+.pathway-endpoint h3 .tag,.pathway-endpoint .health-badge{display:none}
+.pathway-endpoint input,.pathway-endpoint textarea{font-size:10px!important;line-height:1.2!important;margin-top:4px!important;padding:5px 6px!important;border-radius:6px!important}
+.pathway-endpoint textarea{min-height:52px!important}
 @media (max-width:1300px){
   .workspace-inner{min-width:1180px}
-  .diagram{grid-template-columns:440px 236px 440px;column-gap:28px}
+  .diagram{grid-template-columns:minmax(var(--pathway-side-width),1fr) 236px minmax(var(--pathway-side-width),1fr);column-gap:28px}
 }
 @media print{
   .workspace{overflow:visible!important}
   .workspace-inner{min-width:0!important}
   .diagram{
     min-width:0!important;
-    grid-template-columns:minmax(360px,1fr) 170px minmax(360px,1fr)!important;
+    grid-template-columns:minmax(var(--pathway-side-width),1fr) 170px minmax(var(--pathway-side-width),1fr)!important;
     column-gap:16px!important;
   }
   .center{position:relative!important;inset:auto!important;transform:none!important;padding:30px 0 24px!important}
@@ -342,9 +350,13 @@ function layoutDiagram(){
 
   const leftItems=[...leftList.querySelectorAll(':scope > .pathway-branch')];
   const rightItems=[...rightList.querySelectorAll(':scope > .pathway-branch')];
-  const pathwayHeight=item=>Math.max(220,142+item.querySelectorAll('.barrier-node').length*76);
+  const pathways=[...leftItems,...rightItems];
+  const maxBarrierCount=Math.max(1,...pathways.map(item=>item.querySelectorAll('.barrier-node').length));
+  // Give every barrier its own horizontal slot plus clearance, rather than letting cards overlap.
+  diagram.style.setProperty('--pathway-side-width',Math.max(460,118+(maxBarrierCount+1)*132)+'px');
+  const pathwayHeight=item=>Math.max(300,180+item.querySelectorAll('.barrier-node').length*108);
   // Pathways reserve only their own space; opposing rows never determine their geometry.
-  [...leftItems,...rightItems].forEach(item=>{item.style.minHeight=pathwayHeight(item)+'px'});
+  pathways.forEach(item=>{item.style.minHeight=pathwayHeight(item)+'px'});
   const measure=list=>{
     const items=[...list.querySelectorAll(':scope > .pathway-branch')];
     if(!items.length)return 0;
