@@ -92,15 +92,12 @@ textarea{resize:none!important;overflow:hidden!important;height:auto;transition:
 .field textarea,.node textarea{max-height:none!important}
 
 
-/* Dynamic bow-tie layout and SVG pathways */
+/* Independent bow-tie pathways: one uninterrupted route per threat or consequence. */
 .diagram{position:relative;isolation:isolate;align-items:stretch}
 .diagram-connectors{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;overflow:visible}
 .diagram-connectors path{fill:none;stroke:#b8c2d1;stroke-width:2;stroke-linecap:square;stroke-linejoin:miter;shape-rendering:geometricPrecision;vector-effect:non-scaling-stroke}
 .diagram-connectors path.left-path{stroke:var(--prevent)}
 .diagram-connectors path.right-path{stroke:var(--mitigate)}
-.diagram-connectors .junction-square{width:6px;height:6px;stroke:none;shape-rendering:crispEdges}
-.diagram-connectors .junction-square.left{fill:var(--prevent)}
-.diagram-connectors .junction-square.right{fill:var(--mitigate)}
 .side{position:relative;z-index:2;min-width:0}
 .pathway-list{flex:1;justify-content:space-around}
 .branch{position:relative;z-index:2}
@@ -114,7 +111,7 @@ textarea{resize:none!important;overflow:hidden!important;height:auto;transition:
 }
 
 
-/* Corrected corridor layout: centre stays in normal grid flow and never overlaps cards */
+/* Keep the event in its own corridor while allowing each pathway to choose its own slope. */
 .workspace{overflow-x:auto}
 .workspace-inner{min-width:1220px}
 .diagram{
@@ -134,7 +131,7 @@ textarea{resize:none!important;overflow:hidden!important;height:auto;transition:
   display:flex;
   flex-direction:column;
   justify-content:space-evenly;
-  gap:24px;
+  gap:28px;
 }
 .center{
   position:relative;
@@ -151,9 +148,25 @@ textarea{resize:none!important;overflow:hidden!important;height:auto;transition:
 }
 .core-node{position:relative;z-index:4;width:190px}
 .diagram-connectors{z-index:1;overflow:hidden}
-.branch{z-index:3}
+.branch{z-index:3;display:block!important;min-height:164px;isolation:isolate}
 .branch:after,.right .branch:after{display:none!important}
-.node,.stack,.add-btn,.small-btn{position:relative;z-index:3}
+.pathway-endpoint{position:absolute;left:0;top:50%;width:min(43%,210px);transform:translateY(-50%);z-index:3}
+.right .pathway-endpoint{left:auto;right:0}
+.stack{position:absolute;inset:0;z-index:3;display:block!important}
+.barrier-node{position:absolute;z-index:3;width:138px;margin:0!important;transform:translate(-50%,-50%)}
+.small-btn{position:absolute;z-index:4;bottom:0;right:0}
+.right .small-btn{left:0;right:auto}
+
+/* Barrier cards deliberately stay compact so several can sit along a single pathway. */
+.barrier-node{border-radius:8px!important;padding:7px 8px 7px 10px!important;box-shadow:0 4px 12px rgba(15,23,42,.07)!important}
+.barrier-node:before{width:3px!important}
+.barrier-node h3{display:none}
+.barrier-node input,.barrier-node textarea,.barrier-node select{font-size:10px!important;line-height:1.2!important;margin-top:4px!important;padding:5px 6px!important;border-radius:6px!important}
+.barrier-node textarea{min-height:30px!important}
+.barrier-node .badge-row{margin:3px 0!important;gap:3px}
+.barrier-node .mini-badge{font-size:8px!important;padding:2px 4px!important}
+.barrier-node .compact-check{margin-top:4px!important;font-size:9px!important;gap:4px}
+.barrier-node .remove{right:5px;top:5px;width:18px;height:18px;border-radius:5px;font-size:12px}
 @media (max-width:1300px){
   .workspace-inner{min-width:1180px}
   .diagram{grid-template-columns:440px 236px 440px;column-gap:28px}
@@ -172,7 +185,7 @@ textarea{resize:none!important;overflow:hidden!important;height:auto;transition:
 }
 
 
-/* Orthogonal barrier routing */
+/* Straight, independent connector geometry. */
 .diagram-connectors path{opacity:.92}
 .barrier-node,.pathway-endpoint{isolation:isolate}
 
@@ -286,17 +299,16 @@ function statusPrompt(side,item,b){
 function barrierHTML(side,item,b,type){
   b=normalizeBarrier(b);
   const action=model.actions?.find(a=>a.id===b.linkedActionId);
-  const performanceStandard=b.performanceStandard||b.assurance||'';
   const owner=b.assuranceOwner||b.owner||'';
   const method=b.assuranceActivity||'';
   const evidence=b.assuranceEvidence||'';
   const methodOptions=['',...ASSURANCE_METHOD_OPTIONS].map(x=>`<option value="${esc(x)}" ${method===x?'selected':''}>${x||'Assurance Method'}</option>`).join('');
   const evidenceOptions=['',...EVIDENCE_OPTIONS].map(x=>`<option value="${esc(x)}" ${evidence===x?'selected':''}>${x||'Evidence'}</option>`).join('');
-  return `<div class="node ${type} barrier-node status-${slug(b.status)}" data-barrier-id="${b.id}" data-barrier-side="${side}" data-status="${esc(b.status)}"><button class="remove no-print" title="Remove barrier" onclick="removeBarrier('${side}','${item.id}','${b.id}')">×</button><h3>${esc(b.name||'Barrier')} ${b.criticalBarrier?'<span class="critical-icon" title="Critical barrier">◆</span>':''}</h3><div class="badge-row"><span class="mini-badge status-${slug(b.status)}">● ${esc(b.status)}</span>${action?`<span class="mini-badge">Action linked</span>`:''}</div><select class="status-${slug(b.status)}" onchange="setBarrier('${side}','${item.id}','${b.id}','status',this.value)">${STATUS_OPTIONS.map(x=>`<option ${b.status===x?'selected':''}>${x}</option>`).join('')}</select><label class="compact-check"><input type="checkbox" ${b.criticalBarrier?'checked':''} onchange="setBarrier('${side}','${item.id}','${b.id}','criticalBarrier',this.checked)"> Critical Barrier</label><textarea oninput="setBarrier('${side}','${item.id}','${b.id}','performanceStandard',this.value)" placeholder="Performance Standard">${esc(performanceStandard)}</textarea><select onchange="setBarrier('${side}','${item.id}','${b.id}','assuranceActivity',this.value)">${methodOptions}</select><select onchange="setBarrier('${side}','${item.id}','${b.id}','assuranceEvidence',this.value)">${evidenceOptions}</select><input value="${esc(owner)}" oninput="setBarrier('${side}','${item.id}','${b.id}','assuranceOwner',this.value)" placeholder="Owner">${statusPrompt(side,item,b)}</div>`
+  return `<div class="node ${type} barrier-node status-${slug(b.status)}" data-barrier-id="${b.id}" data-barrier-side="${side}" data-status="${esc(b.status)}"><button class="remove no-print" title="Remove barrier" onclick="removeBarrier('${side}','${item.id}','${b.id}')">×</button><input value="${esc(b.name)}" oninput="setBarrier('${side}','${item.id}','${b.id}','name',this.value)" placeholder="Safeguard description" aria-label="Safeguard description"><div class="badge-row"><span class="mini-badge status-${slug(b.status)}">● ${esc(b.status)}</span>${action?`<span class="mini-badge">Action linked</span>`:''}</div><select class="status-${slug(b.status)}" onchange="setBarrier('${side}','${item.id}','${b.id}','status',this.value)">${STATUS_OPTIONS.map(x=>`<option ${b.status===x?'selected':''}>${x}</option>`).join('')}</select><label class="compact-check"><input type="checkbox" ${b.criticalBarrier?'checked':''} onchange="setBarrier('${side}','${item.id}','${b.id}','criticalBarrier',this.checked)"> Critical Barrier</label><select onchange="setBarrier('${side}','${item.id}','${b.id}','assuranceActivity',this.value)">${methodOptions}</select><select onchange="setBarrier('${side}','${item.id}','${b.id}','assuranceEvidence',this.value)">${evidenceOptions}</select><input value="${esc(owner)}" oninput="setBarrier('${side}','${item.id}','${b.id}','assuranceOwner',this.value)" placeholder="Owner">${statusPrompt(side,item,b)}</div>`
 }
 function pathwayEndpoint(side,item,kind){const h=pathwayHealth(item);return `<div class="node ${kind} pathway-endpoint"><button class="remove no-print" title="Remove ${kind}" onclick="removeItem('${side}','${item.id}')">×</button><h3>${kind==='threat'?'Threat':'Consequence'} <span class="tag">${kind==='threat'?'Cause':'Outcome'}</span><span class="mini-badge health-badge health-${slug(h)}">${h}</span></h3><input value="${esc(item.name)}" oninput="setItem('${side}','${item.id}','name',this.value)"><textarea oninput="setItem('${side}','${item.id}','description',this.value)" placeholder="${kind==='threat'?'Initiating mechanism or condition':'Credible outcome and receptors'}">${esc(item.description)}</textarea></div>`}
 function render(){model.threats=(model.threats||[]).map(t=>(t.barriers=(t.barriers||[]).map(normalizeBarrier),t));model.consequences=(model.consequences||[]).map(c=>(c.barriers=(c.barriers||[]).map(normalizeBarrier),c));model.actions=model.actions||[];document.getElementById('threats').innerHTML=model.threats.map(t=>`<div class="branch pathway-branch" data-side="left" data-pathway-id="${t.id}" data-health="${pathwayHealth(t)}">${pathwayEndpoint('threat',t,'threat')}<div class="stack">${t.barriers.map(b=>barrierHTML('threat',t,b,'preventive')).join('')}<button class="small-btn no-print" onclick="addBarrier('threat','${t.id}')">＋ Add preventive barrier</button></div></div>`).join('');document.getElementById('consequences').innerHTML=model.consequences.map(c=>`<div class="branch pathway-branch" data-side="right" data-pathway-id="${c.id}" data-health="${pathwayHealth(c)}"><div class="stack">${c.barriers.map(b=>barrierHTML('consequence',c,b,'mitigative')).join('')}<button class="small-btn no-print" onclick="addBarrier('consequence','${c.id}')">＋ Add mitigative barrier</button></div>${pathwayEndpoint('consequence',c,'consequence')}</div>`).join('');document.getElementById('threatCount').textContent=model.threats.length;document.getElementById('consequenceCount').textContent=model.consequences.length;document.getElementById('barrierCount').textContent=allBarriers().length;renderDashboard();renderActions();syncMirrors();autoGrowAll();scheduleDiagramLayout()}
-function validationWarnings(){let w=[];allBarriers().forEach(({b})=>{if(!b.name)w.push('Barrier has no name');if(!b.performanceStandard&&!b.assurance)w.push('Barrier has no performance standard');if(!b.assuranceActivity)w.push('Barrier has no assurance activity')});return w}
+function validationWarnings(){let w=[];allBarriers().forEach(({b})=>{if(!b.name)w.push('Barrier has no description');if(!b.assuranceActivity)w.push('Barrier has no assurance activity')});return w}
 let activeFilter='all';function setFilter(f){activeFilter=f;document.querySelectorAll('.barrier-node').forEach(el=>{const id=el.dataset.barrierId;const rec=allBarriers().find(x=>x.b.id===id);let show=f==='all'||(f==='criticalImpaired'&&rec.b.criticalBarrier&&['Degraded','Failed'].includes(rec.b.status))||(f==='assuranceOverdue'&&rec.b.assuranceStatus==='Overdue')||(f==='noEvidence'&&rec.b.assuranceStatus==='No Evidence')||rec.b.status===f;el.classList.toggle('filtered-out',!show)});}
 function renderDashboard(){const bars=allBarriers().map(x=>x.b), paths=allPathways(), warnings=validationWarnings();const m=[['Total barriers',bars.length,'all'],['Effective',bars.filter(b=>b.status==='Effective').length,'Effective'],['Degraded',bars.filter(b=>b.status==='Degraded').length,'Degraded'],['Failed',bars.filter(b=>b.status==='Failed').length,'Failed'],['Not Verified',bars.filter(b=>b.status==='Not Verified').length,'Not Verified'],['Critical barriers impaired',bars.filter(b=>b.criticalBarrier&&['Degraded','Failed'].includes(b.status)).length,'criticalImpaired'],['Open actions',(model.actions||[]).filter(a=>a.status!=='Closed').length,'all'],['Critical impairment pathways',paths.filter(p=>pathwayHealth(p)==='Critical Impairment').length,'all']];document.getElementById('healthMetrics').innerHTML=m.map(x=>`<button class="metric" onclick="setFilter('${x[2]}')"><b>${x[1]}</b><span>${x[0]}</span></button>`).join('');document.getElementById('validationSummary').textContent=warnings.length?`${warnings.length} incomplete record warning(s): ${[...new Set(warnings)].join('; ')}`:'No incomplete barrier records.'}
 function createActionForBarrier(side,itemId,bid){const arr=side==='threat'?model.threats:model.consequences,item=arr.find(x=>x.id===itemId),b=item.barriers.find(x=>x.id===bid);if(!['Degraded','Failed','Not Verified'].includes(b.status))return;const type=b.status==='Not Verified'?'Assurance Review':'Barrier Impairment';const pri=b.status==='Failed'&&b.criticalBarrier?'Critical':b.status==='Failed'?'High':'Medium';const reason=b.statusReason||`${b.status} barrier requires follow-up`;if(!confirm(`Create ${type} action for ${b.name}?`))return;const a={id:uid(),title:`${type}: ${b.name}`,description:reason,owner:b.assuranceOwner||b.owner||'',priority:pri,targetDate:'',status:'Open',notes:b.temporaryControls||'',linkedBarrier:bid,linkedContext:item.name,actionType:type};model.actions.push(a);b.linkedActionId=a.id;b.actionRequired=true;render();notify('Action created')}
@@ -330,20 +342,15 @@ function layoutDiagram(){
 
   const leftItems=[...leftList.querySelectorAll(':scope > .pathway-branch')];
   const rightItems=[...rightList.querySelectorAll(':scope > .pathway-branch')];
-  [...leftItems,...rightItems].forEach(item=>{item.style.minHeight=''});
-  Array.from({length:Math.max(leftItems.length,rightItems.length)},(_,i)=>{
-    const pair=[leftItems[i],rightItems[i]].filter(Boolean);
-    if(pair.length<2)return;
-    const h=Math.max(...pair.map(item=>item.offsetHeight));
-    pair.forEach(item=>{item.style.minHeight=h+'px'});
-  });
-
+  const pathwayHeight=item=>Math.max(220,142+item.querySelectorAll('.barrier-node').length*76);
+  // Pathways reserve only their own space; opposing rows never determine their geometry.
+  [...leftItems,...rightItems].forEach(item=>{item.style.minHeight=pathwayHeight(item)+'px'});
   const measure=list=>{
     const items=[...list.querySelectorAll(':scope > .pathway-branch')];
     if(!items.length)return 0;
-    return items.reduce((sum,item)=>sum+item.offsetHeight,0)+Math.max(0,items.length-1)*24;
+    return items.reduce((sum,item)=>sum+pathwayHeight(item),0)+Math.max(0,items.length-1)*28;
   };
-  const required=Math.max(680,measure(leftList)+150,measure(rightList)+150);
+  const required=Math.max(680,measure(leftList)+110,measure(rightList)+110);
   diagram.style.minHeight=required+'px';
   const listHeight=Math.max(540,required-96);
   leftList.style.minHeight=listHeight+'px';
@@ -351,147 +358,19 @@ function layoutDiagram(){
   requestAnimationFrame(drawConnectors);
 }
 function drawConnectors(){
-  const diagram=document.getElementById('diagram');
-  const svg=document.getElementById('connectorLayer');
-  const top=document.getElementById('topEventNode');
+  const diagram=document.getElementById('diagram'),svg=document.getElementById('connectorLayer'),top=document.getElementById('topEventNode');
   if(!diagram||!svg||!top)return;
-
-  const bounds=diagram.getBoundingClientRect();
-  const topRect=top.getBoundingClientRect();
-  const width=Math.max(1,diagram.clientWidth);
-  const height=Math.max(1,diagram.clientHeight);
-
-  svg.setAttribute('viewBox',`0 0 ${width} ${height}`);
-  svg.setAttribute('preserveAspectRatio','none');
-  svg.innerHTML='';
-
-  const ns='http://www.w3.org/2000/svg';
-  const px=x=>x-bounds.left;
-  const py=y=>y-bounds.top;
-
-  function addPath(points, side, extraClass=''){
-    if(!points || points.length<2)return;
-    const path=document.createElementNS(ns,'path');
-    const commands=points.map((p,i)=>(i?'L':'M')+` ${p[0]} ${p[1]}`).join(' ');
-    path.setAttribute('d',commands);
-    path.setAttribute('class',`${side==='left'?'left-path':'right-path'} ${extraClass}`.trim());
-    svg.appendChild(path);
-  }
-
-  function addJunction(x,y,side){
-    const el=document.createElementNS(ns,'rect');
-    el.setAttribute('x',x-3);
-    el.setAttribute('y',y-3);
-    el.setAttribute('width',6);
-    el.setAttribute('height',6);
-    el.setAttribute('class',`junction-square ${side}`);
-    svg.appendChild(el);
-  }
-
-  function barrierCenterYs(rects){
-    return rects.map(r=>py(r.top+r.height/2));
-  }
-
-  function sideAnchorYs(side,count){
-    const topY=py(topRect.top);
-    const h=topRect.height;
-    if(count<=1)return [topY+h/2];
-    const pad=Math.min(18,Math.max(9,h*.18));
-    const usable=Math.max(1,h-pad*2);
-    return Array.from({length:count},(_,i)=>topY+pad+(usable*i/(count-1)));
-  }
-
-  function drawLeftPathway(branch,targetY){
-    const threat=branch.querySelector('.node.threat');
-    const barriers=[...branch.querySelectorAll('.barrier-node')];
-    if(!threat || !barriers.length)return;
-
-    const tr=threat.getBoundingClientRect();
-    const brs=barriers.map(el=>el.getBoundingClientRect());
-
-    const threatX=px(tr.right);
-    const threatY=py(tr.top+tr.height/2);
-    const firstBarrierLeft=Math.min(...brs.map(r=>px(r.left)));
-    const lastBarrierRight=Math.max(...brs.map(r=>px(r.right)));
-    const topX=px(topRect.left);
-
-    // Trunk between threat and barrier stack.
-    const branchOffset=Math.max(24,Math.min(44,(firstBarrierLeft-threatX)*0.5));
-    const inputTrunkX=threatX+branchOffset;
-    const barrierYs=barrierCenterYs(brs);
-    const minBY=Math.min(...barrierYs), maxBY=Math.max(...barrierYs);
-
-    addPath([[threatX,threatY],[inputTrunkX,threatY]],'left');
-    addPath([[inputTrunkX,Math.min(threatY,minBY)],[inputTrunkX,Math.max(threatY,maxBY)]],'left');
-
-    brs.forEach((r,i)=>{
-      const y=barrierYs[i];
-      addPath([[inputTrunkX,y],[px(r.left),y]],'left');
-    });
-
-    // Output trunk between barrier stack and top event.
-    const topOffset=Math.max(24,Math.min(44,(topX-lastBarrierRight)*0.5));
-    const outputTrunkX=lastBarrierRight+topOffset;
-    addPath([[outputTrunkX,Math.min(targetY,minBY)],[outputTrunkX,Math.max(targetY,maxBY)]],'left');
-
-    brs.forEach((r,i)=>{
-      const y=barrierYs[i];
-      addPath([[px(r.right),y],[outputTrunkX,y]],'left');
-      addJunction(outputTrunkX,y,'left');
-    });
-
-    addPath([[outputTrunkX,targetY],[topX,targetY]],'left');
-  }
-
-  function drawRightPathway(branch,targetY){
-    const consequence=branch.querySelector('.node.consequence');
-    const barriers=[...branch.querySelectorAll('.barrier-node')];
-    if(!consequence || !barriers.length)return;
-
-    const cr=consequence.getBoundingClientRect();
-    const brs=barriers.map(el=>el.getBoundingClientRect());
-
-    const consequenceX=px(cr.left);
-    const consequenceY=py(cr.top+cr.height/2);
-    const firstBarrierLeft=Math.min(...brs.map(r=>px(r.left)));
-    const lastBarrierRight=Math.max(...brs.map(r=>px(r.right)));
-    const topX=px(topRect.right);
-
-    const barrierYs=barrierCenterYs(brs);
-    const minBY=Math.min(...barrierYs), maxBY=Math.max(...barrierYs);
-
-    // Input trunk from top event to mitigation barriers.
-    const topOffset=Math.max(24,Math.min(44,(firstBarrierLeft-topX)*0.5));
-    const inputTrunkX=topX+topOffset;
-    addPath([[topX,targetY],[inputTrunkX,targetY]],'right');
-    addPath([[inputTrunkX,Math.min(targetY,minBY)],[inputTrunkX,Math.max(targetY,maxBY)]],'right');
-
-    brs.forEach((r,i)=>{
-      const y=barrierYs[i];
-      addPath([[inputTrunkX,y],[px(r.left),y]],'right');
-      addJunction(inputTrunkX,y,'right');
-    });
-
-    // Output trunk from barriers to consequence.
-    const branchOffset=Math.max(24,Math.min(44,(consequenceX-lastBarrierRight)*0.5));
-    const outputTrunkX=lastBarrierRight+branchOffset;
-    addPath([[outputTrunkX,Math.min(consequenceY,minBY)],[outputTrunkX,Math.max(consequenceY,maxBY)]],'right');
-
-    brs.forEach((r,i)=>{
-      const y=barrierYs[i];
-      addPath([[px(r.right),y],[outputTrunkX,y]],'right');
-    });
-
-    addPath([[outputTrunkX,consequenceY],[consequenceX,consequenceY]],'right');
-  }
-
-  const leftBranches=[...document.querySelectorAll('.pathway-branch[data-side="left"]')];
-  const rightBranches=[...document.querySelectorAll('.pathway-branch[data-side="right"]')];
-  const leftTargets=sideAnchorYs('left',leftBranches.length);
-  const rightTargets=sideAnchorYs('right',rightBranches.length);
-
-  leftBranches.forEach((branch,i)=>drawLeftPathway(branch,leftTargets[i]));
-  rightBranches.forEach((branch,i)=>drawRightPathway(branch,rightTargets[i]));
+  const bounds=diagram.getBoundingClientRect(),topRect=top.getBoundingClientRect(),width=Math.max(1,diagram.clientWidth),height=Math.max(1,diagram.clientHeight);
+  svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.setAttribute('preserveAspectRatio','none');svg.innerHTML='';
+  const ns='http://www.w3.org/2000/svg',px=x=>x-bounds.left,py=y=>y-bounds.top;
+  const addPath=(points,side)=>{const path=document.createElementNS(ns,'path');path.setAttribute('d',points.map((p,i)=>(i?'L':'M')+` ${p[0]} ${p[1]}`).join(' '));path.setAttribute('class',side==='left'?'left-path':'right-path');svg.appendChild(path)};
+  const anchors=count=>{const topY=py(topRect.top),h=topRect.height;if(count<=1)return[topY+h/2];const pad=Math.min(18,Math.max(9,h*.18)),usable=Math.max(1,h-pad*2);return Array.from({length:count},(_,i)=>topY+pad+usable*i/(count-1))};
+  const positionBarriers=(branch,start,end)=>{const branchRect=branch.getBoundingClientRect(),barriers=[...branch.querySelectorAll('.barrier-node')],step=1/(barriers.length+1);barriers.forEach((barrier,index)=>{const ratio=(index+1)*step,x=start[0]+(end[0]-start[0])*ratio,y=start[1]+(end[1]-start[1])*ratio;barrier.style.left=(x-px(branchRect.left))+'px';barrier.style.top=(y-py(branchRect.top))+'px'})};
+  const drawLeft=(branch,targetY)=>{const node=branch.querySelector('.node.threat');if(!node)return;const rect=node.getBoundingClientRect(),start=[px(rect.right),py(rect.top+rect.height/2)],end=[px(topRect.left),targetY];positionBarriers(branch,start,end);addPath([start,end],'left')};
+  const drawRight=(branch,targetY)=>{const node=branch.querySelector('.node.consequence');if(!node)return;const rect=node.getBoundingClientRect(),start=[px(topRect.right),targetY],end=[px(rect.left),py(rect.top+rect.height/2)];positionBarriers(branch,start,end);addPath([start,end],'right')};
+  const leftBranches=[...document.querySelectorAll('.pathway-branch[data-side="left"]')],rightBranches=[...document.querySelectorAll('.pathway-branch[data-side="right"]')];
+  leftBranches.forEach((branch,i)=>drawLeft(branch,anchors(leftBranches.length)[i]));
+  rightBranches.forEach((branch,i)=>drawRight(branch,anchors(rightBranches.length)[i]));
 }
 
 
