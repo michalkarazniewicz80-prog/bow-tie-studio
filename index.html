@@ -349,19 +349,17 @@ function layoutDiagram(){
   const leftList=document.getElementById('threats');
   const rightList=document.getElementById('consequences');
   if(!diagram||!leftList||!rightList)return;
-  const isPrinting=preparingPrint||window.matchMedia('print').matches;
-
   const leftItems=[...leftList.querySelectorAll(':scope > .pathway-branch')];
   const rightItems=[...rightList.querySelectorAll(':scope > .pathway-branch')];
   const pathways=[...leftItems,...rightItems];
   const maxBarrierCount=Math.max(1,...pathways.map(item=>item.querySelectorAll('.barrier-node').length));
   // Give every barrier its own horizontal slot plus clearance, rather than letting cards overlap.
-  diagram.style.setProperty('--pathway-side-width',Math.max(isPrinting?360:460,136+(maxBarrierCount+1)*(isPrinting?112:150))+'px');
+  diagram.style.setProperty('--pathway-side-width',Math.max(460,136+(maxBarrierCount+1)*150)+'px');
   const pathwayHeight=item=>{
     const cards=[...item.querySelectorAll('.barrier-node,.pathway-endpoint')];
     const tallestCard=Math.max(172,...cards.map(card=>card.offsetHeight));
-    // Screen editing leaves generous clearance; the print profile packs routes without overlapping cards.
-    return isPrinting?Math.max(196,tallestCard+24,172+item.querySelectorAll('.barrier-node').length*24):Math.max(390,tallestCard*2+40,192+item.querySelectorAll('.barrier-node').length*112);
+    // Two full card heights keep the diagonal portion of this route clear of its neighbours.
+    return Math.max(390,tallestCard*2+40,192+item.querySelectorAll('.barrier-node').length*112);
   };
   // Pathways reserve only their own space; opposing rows never determine their geometry.
   pathways.forEach(item=>{item.style.minHeight=pathwayHeight(item)+'px'});
