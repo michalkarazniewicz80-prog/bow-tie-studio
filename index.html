@@ -334,10 +334,12 @@ function autoGrowTextarea(el){if(!el)return;el.style.height='auto';const minHeig
 function autoGrowAll(){requestAnimationFrame(()=>{document.querySelectorAll('textarea').forEach(autoGrowTextarea);scheduleDiagramLayout();})}
 document.addEventListener('input',e=>{if(e.target&&e.target.tagName==='TEXTAREA'){autoGrowTextarea(e.target);scheduleDiagramLayout()}});window.addEventListener('load',autoGrowAll);window.addEventListener('resize',()=>{autoGrowAll();scheduleDiagramLayout()});
 let diagramLayoutFrame=0;
-// Position overrides are intentionally session-only: diagram adjustments do not alter saved project data.
+// Endpoint positions belong to their pathway so they survive re-renders, edits and project saves.
 const manualBarrierPositions=new Map();
 const manualEndpointPositions=new Map();
 let activeBarrierDrag=null;
+function endpointPosition(branch){const item=(branch.dataset.side==='left'?model.threats:model.consequences).find(pathway=>pathway.id===branch.dataset.pathwayId);return manualEndpointPositions.get(branch.dataset.pathwayId)??item?.endpointPosition}
+function setEndpointPosition(branch,position){manualEndpointPositions.set(branch.dataset.pathwayId,position);const items=branch.dataset.side==='left'?model.threats:model.consequences,item=items.find(pathway=>pathway.id===branch.dataset.pathwayId);if(item)item.endpointPosition=position}
 function scheduleDiagramLayout(){
   cancelAnimationFrame(diagramLayoutFrame);
   diagramLayoutFrame=requestAnimationFrame(()=>requestAnimationFrame(layoutDiagram));
@@ -377,7 +379,7 @@ function layoutDiagram(){
 function drawConnectors(){
   const diagram=document.getElementById('diagram'),svg=document.getElementById('connectorLayer'),top=document.getElementById('topEventNode');
   if(!diagram||!svg||!top)return;
-  document.querySelectorAll('.pathway-branch').forEach(branch=>{const position=manualEndpointPositions.get(branch.dataset.pathwayId),endpoint=branch.querySelector('.pathway-endpoint');if(!position||!endpoint)return;if(branch.dataset.side==='left')endpoint.style.left=position.x+'px';else endpoint.style.right=position.x+'px';endpoint.style.top=`calc(50% + ${position.y}px)`});
+  document.querySelectorAll('.pathway-branch').forEach(branch=>{const position=endpointPosition(branch),endpoint=branch.querySelector('.pathway-endpoint');if(!position||!endpoint)return;if(branch.dataset.side==='left')endpoint.style.left=position.x+'px';else endpoint.style.right=position.x+'px';endpoint.style.top=`calc(50% + ${position.y}px)`});
   const bounds=diagram.getBoundingClientRect(),topRect=top.getBoundingClientRect(),width=Math.max(1,diagram.clientWidth),height=Math.max(1,diagram.clientHeight);
   svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.setAttribute('preserveAspectRatio','none');svg.innerHTML='';
   const ns='http://www.w3.org/2000/svg',px=x=>x-bounds.left,py=y=>y-bounds.top;
@@ -406,7 +408,7 @@ function updateDraggedBarrier(event){
   if(!activeBarrierDrag)return;
   if(activeBarrierDrag.type==='endpoint'){
     const {endpoint,branch,startX,startY,initialPosition}=activeBarrierDrag,deltaX=event.clientX-startX,deltaY=event.clientY-startY,maxX=Math.max(-140,branch.clientWidth-endpoint.offsetWidth-100),maxY=Math.max(0,(branch.clientHeight-endpoint.offsetHeight)/2),x=Math.min(maxX,Math.max(-140,initialPosition.x+(branch.dataset.side==='left'?deltaX:-deltaX))),y=Math.min(maxY,Math.max(-maxY,initialPosition.y+deltaY));
-    manualEndpointPositions.set(branch.dataset.pathwayId,{x,y});
+    setEndpointPosition(branch,{x,y});
     if(branch.dataset.side==='left')endpoint.style.left=x+'px';else endpoint.style.right=x+'px';
     endpoint.style.top=`calc(50% + ${y}px)`;
     drawConnectors();
@@ -425,7 +427,7 @@ document.addEventListener('pointerdown',event=>{
   if(barrier){activeBarrierDrag={type:'barrier',barrier};barrier.classList.add('dragging');barrier.setPointerCapture?.(event.pointerId);event.preventDefault();return}
   const endpoint=event.target.closest?.('.pathway-endpoint'),branch=endpoint?.closest('.pathway-branch');
   if(!endpoint||!branch)return;
-  const initialPosition=manualEndpointPositions.get(branch.dataset.pathwayId)??{x:0,y:0};
+  const initialPosition=endpointPosition(branch)??{x:0,y:0};
   activeBarrierDrag={type:'endpoint',endpoint,branch,startX:event.clientX,startY:event.clientY,initialPosition};endpoint.classList.add('dragging');endpoint.setPointerCapture?.(event.pointerId);event.preventDefault();
 });
 document.addEventListener('pointermove',updateDraggedBarrier);
