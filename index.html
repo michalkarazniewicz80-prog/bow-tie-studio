@@ -155,7 +155,8 @@ textarea{resize:none!important;overflow:hidden!important;height:auto;transition:
 .pathway-endpoint{position:absolute;left:0;top:50%;width:var(--pathway-card-width);min-height:172px;transform:translateY(-50%);z-index:3}
 .right .pathway-endpoint{left:auto;right:0}
 .stack{position:absolute;inset:0;z-index:3;display:block!important}
-.barrier-node{position:absolute;z-index:3;width:var(--pathway-card-width);min-height:172px;margin:0!important;transform:translate(-50%,-50%)}
+.barrier-node{position:absolute;z-index:3;width:var(--pathway-card-width);min-height:172px;margin:0!important;transform:translate(-50%,-50%);cursor:grab;touch-action:none}
+.barrier-node.dragging{cursor:grabbing;z-index:5}
 .small-btn{position:absolute;z-index:4;bottom:0;right:0}
 .right .small-btn{left:0;right:auto}
 
@@ -169,6 +170,7 @@ textarea{resize:none!important;overflow:hidden!important;height:auto;transition:
 .barrier-node .mini-badge{font-size:8px!important;padding:2px 4px!important}
 .barrier-node .compact-check{margin-top:4px!important;font-size:9px!important;gap:4px}
 .barrier-node .remove{right:5px;top:5px;width:18px;height:18px;border-radius:5px;font-size:12px}
+.barrier-node .status-action{display:block;width:100%;margin-top:4px;padding:5px 6px;font-size:10px;line-height:1.2;text-align:center}
 .barrier-node:hover{transform:translate(-50%,-50%)!important;box-shadow:0 12px 28px rgba(15,23,42,.075)!important}
 .pathway-endpoint{border-radius:8px!important;padding:7px 8px 7px 10px!important;box-shadow:0 4px 12px rgba(15,23,42,.07)!important}
 .pathway-endpoint:before{width:3px!important}
@@ -296,15 +298,7 @@ function setBarrier(side,itemId,bid,key,val){const arr=side==='threat'?model.thr
 function pathwayHealth(item){const barriers=(item.barriers||[]).map(normalizeBarrier);if(!barriers.length)return'Not Assessed';const hasEffective=barriers.some(b=>b.status==='Effective');if(barriers.some(b=>b.criticalBarrier&&b.status==='Failed')||!hasEffective)return'Critical Impairment';if(barriers.some(b=>['Degraded','Not Verified'].includes(b.status)||['Overdue','No Evidence'].includes(b.assuranceStatus)))return'Reduced Resilience';return'Healthy'}
 function statusPrompt(side,item,b){
   if(!['Degraded','Failed','Not Verified'].includes(b.status))return'';
-  let msg='Create an action for follow-up in the Action Register.';
-  let cls='prompt';
-  if(b.status==='Degraded')msg='Barrier degraded: create an action if workshop follow-up is required.';
-  if(b.status==='Failed'){
-    msg='Barrier failed: create an action to manage operational follow-up.';
-    if(b.criticalBarrier){msg+=' Critical barrier unavailable.';cls+=' critical'}
-  }
-  if(b.status==='Not Verified')msg='Barrier not verified: create an action to plan assurance follow-up.';
-  return`<div class="${cls}">${msg} <button class="link-btn no-print" onclick="createActionForBarrier('${side}','${item.id}','${b.id}')">Create Action</button></div>`
+  return`<button class="link-btn status-action no-print" onclick="createActionForBarrier('${side}','${item.id}','${b.id}')">Create Action</button>`
 }
 function barrierHTML(side,item,b,type){
   b=normalizeBarrier(b);
@@ -314,7 +308,7 @@ function barrierHTML(side,item,b,type){
   const evidence=b.assuranceEvidence||'';
   const methodOptions=['',...ASSURANCE_METHOD_OPTIONS].map(x=>`<option value="${esc(x)}" ${method===x?'selected':''}>${x||'Assurance Method'}</option>`).join('');
   const evidenceOptions=['',...EVIDENCE_OPTIONS].map(x=>`<option value="${esc(x)}" ${evidence===x?'selected':''}>${x||'Evidence'}</option>`).join('');
-  return `<div class="node ${type} barrier-node status-${slug(b.status)}" data-barrier-id="${b.id}" data-barrier-side="${side}" data-status="${esc(b.status)}"><button class="remove no-print" title="Remove barrier" onclick="removeBarrier('${side}','${item.id}','${b.id}')">×</button><input value="${esc(b.name)}" oninput="setBarrier('${side}','${item.id}','${b.id}','name',this.value)" placeholder="Safeguard description" aria-label="Safeguard description"><div class="badge-row"><span class="mini-badge status-${slug(b.status)}">● ${esc(b.status)}</span>${action?`<span class="mini-badge">Action linked</span>`:''}</div><select class="status-${slug(b.status)}" onchange="setBarrier('${side}','${item.id}','${b.id}','status',this.value)">${STATUS_OPTIONS.map(x=>`<option ${b.status===x?'selected':''}>${x}</option>`).join('')}</select><label class="compact-check"><input type="checkbox" ${b.criticalBarrier?'checked':''} onchange="setBarrier('${side}','${item.id}','${b.id}','criticalBarrier',this.checked)"> Critical Barrier</label><select onchange="setBarrier('${side}','${item.id}','${b.id}','assuranceActivity',this.value)">${methodOptions}</select><select onchange="setBarrier('${side}','${item.id}','${b.id}','assuranceEvidence',this.value)">${evidenceOptions}</select><input value="${esc(owner)}" oninput="setBarrier('${side}','${item.id}','${b.id}','assuranceOwner',this.value)" placeholder="Owner">${statusPrompt(side,item,b)}</div>`
+  return `<div class="node ${type} barrier-node status-${slug(b.status)}" data-barrier-id="${b.id}" data-barrier-side="${side}" data-status="${esc(b.status)}" title="Drag along this pathway"><button class="remove no-print" title="Remove barrier" onclick="removeBarrier('${side}','${item.id}','${b.id}')">×</button><input value="${esc(b.name)}" oninput="setBarrier('${side}','${item.id}','${b.id}','name',this.value)" placeholder="Safeguard description" aria-label="Safeguard description"><div class="badge-row"><span class="mini-badge status-${slug(b.status)}">● ${esc(b.status)}</span>${action?`<span class="mini-badge">Action linked</span>`:''}</div><select class="status-${slug(b.status)}" onchange="setBarrier('${side}','${item.id}','${b.id}','status',this.value)">${STATUS_OPTIONS.map(x=>`<option ${b.status===x?'selected':''}>${x}</option>`).join('')}</select><label class="compact-check"><input type="checkbox" ${b.criticalBarrier?'checked':''} onchange="setBarrier('${side}','${item.id}','${b.id}','criticalBarrier',this.checked)"> Critical Barrier</label><select onchange="setBarrier('${side}','${item.id}','${b.id}','assuranceActivity',this.value)">${methodOptions}</select><select onchange="setBarrier('${side}','${item.id}','${b.id}','assuranceEvidence',this.value)">${evidenceOptions}</select><input value="${esc(owner)}" oninput="setBarrier('${side}','${item.id}','${b.id}','assuranceOwner',this.value)" placeholder="Owner">${statusPrompt(side,item,b)}</div>`
 }
 function pathwayEndpoint(side,item,kind){const h=pathwayHealth(item);return `<div class="node ${kind} pathway-endpoint"><button class="remove no-print" title="Remove ${kind}" onclick="removeItem('${side}','${item.id}')">×</button><h3>${kind==='threat'?'Threat':'Consequence'} <span class="tag">${kind==='threat'?'Cause':'Outcome'}</span><span class="mini-badge health-badge health-${slug(h)}">${h}</span></h3><input value="${esc(item.name)}" oninput="setItem('${side}','${item.id}','name',this.value)"><textarea oninput="setItem('${side}','${item.id}','description',this.value)" placeholder="${kind==='threat'?'Initiating mechanism or condition':'Credible outcome and receptors'}">${esc(item.description)}</textarea></div>`}
 function render(){model.threats=(model.threats||[]).map(t=>(t.barriers=(t.barriers||[]).map(normalizeBarrier),t));model.consequences=(model.consequences||[]).map(c=>(c.barriers=(c.barriers||[]).map(normalizeBarrier),c));model.actions=model.actions||[];document.getElementById('threats').innerHTML=model.threats.map(t=>`<div class="branch pathway-branch" data-side="left" data-pathway-id="${t.id}" data-health="${pathwayHealth(t)}">${pathwayEndpoint('threat',t,'threat')}<div class="stack">${t.barriers.map(b=>barrierHTML('threat',t,b,'preventive')).join('')}<button class="small-btn no-print" onclick="addBarrier('threat','${t.id}')">＋ Add preventive barrier</button></div></div>`).join('');document.getElementById('consequences').innerHTML=model.consequences.map(c=>`<div class="branch pathway-branch" data-side="right" data-pathway-id="${c.id}" data-health="${pathwayHealth(c)}"><div class="stack">${c.barriers.map(b=>barrierHTML('consequence',c,b,'mitigative')).join('')}<button class="small-btn no-print" onclick="addBarrier('consequence','${c.id}')">＋ Add mitigative barrier</button></div>${pathwayEndpoint('consequence',c,'consequence')}</div>`).join('');document.getElementById('threatCount').textContent=model.threats.length;document.getElementById('consequenceCount').textContent=model.consequences.length;document.getElementById('barrierCount').textContent=allBarriers().length;renderDashboard();renderActions();syncMirrors();autoGrowAll();scheduleDiagramLayout()}
@@ -340,6 +334,9 @@ function autoGrowTextarea(el){if(!el)return;el.style.height='auto';const minHeig
 function autoGrowAll(){requestAnimationFrame(()=>{document.querySelectorAll('textarea').forEach(autoGrowTextarea);scheduleDiagramLayout();})}
 document.addEventListener('input',e=>{if(e.target&&e.target.tagName==='TEXTAREA'){autoGrowTextarea(e.target);scheduleDiagramLayout()}});window.addEventListener('load',autoGrowAll);window.addEventListener('resize',()=>{autoGrowAll();scheduleDiagramLayout()});
 let diagramLayoutFrame=0;
+// Position overrides are intentionally session-only: diagram adjustments do not alter saved project data.
+const manualBarrierPositions=new Map();
+let activeBarrierDrag=null;
 function scheduleDiagramLayout(){
   cancelAnimationFrame(diagramLayoutFrame);
   diagramLayoutFrame=requestAnimationFrame(()=>requestAnimationFrame(layoutDiagram));
@@ -384,13 +381,41 @@ function drawConnectors(){
   const ns='http://www.w3.org/2000/svg',px=x=>x-bounds.left,py=y=>y-bounds.top;
   const addPath=(points,side)=>{const path=document.createElementNS(ns,'path');path.setAttribute('d',points.map((p,i)=>(i?'L':'M')+` ${p[0]} ${p[1]}`).join(' '));path.setAttribute('class',side==='left'?'left-path':'right-path');svg.appendChild(path)};
   const anchors=count=>{const topY=py(topRect.top),h=topRect.height;if(count<=1)return[topY+h/2];const pad=Math.min(18,Math.max(9,h*.18)),usable=Math.max(1,h-pad*2);return Array.from({length:count},(_,i)=>topY+pad+usable*i/(count-1))};
-  const positionBarriers=(branch,start,end)=>{const branchRect=branch.getBoundingClientRect(),barriers=[...branch.querySelectorAll('.barrier-node')],step=1/(barriers.length+1);barriers.forEach((barrier,index)=>{const ratio=(index+1)*step,x=start[0]+(end[0]-start[0])*ratio,y=start[1]+(end[1]-start[1])*ratio;barrier.style.left=(x-px(branchRect.left))+'px';barrier.style.top=(y-py(branchRect.top))+'px'})};
+  const positionBarriers=(branch,start,end)=>{const branchRect=branch.getBoundingClientRect(),barriers=[...branch.querySelectorAll('.barrier-node')],step=1/(barriers.length+1);branch._pathwayGeometry={start,end};barriers.forEach((barrier,index)=>{const ratio=manualBarrierPositions.get(barrier.dataset.barrierId)??(index+1)*step,x=start[0]+(end[0]-start[0])*ratio,y=start[1]+(end[1]-start[1])*ratio;barrier.style.left=(x-px(branchRect.left))+'px';barrier.style.top=(y-py(branchRect.top))+'px'})};
   const drawLeft=(branch,targetY)=>{const node=branch.querySelector('.node.threat');if(!node)return;const rect=node.getBoundingClientRect(),start=[px(rect.right),py(rect.top+rect.height/2)],end=[px(topRect.left),targetY];positionBarriers(branch,start,end);addPath([start,end],'left')};
   const drawRight=(branch,targetY)=>{const node=branch.querySelector('.node.consequence');if(!node)return;const rect=node.getBoundingClientRect(),start=[px(topRect.right),targetY],end=[px(rect.left),py(rect.top+rect.height/2)];positionBarriers(branch,start,end);addPath([start,end],'right')};
   const leftBranches=[...document.querySelectorAll('.pathway-branch[data-side="left"]')],rightBranches=[...document.querySelectorAll('.pathway-branch[data-side="right"]')];
   leftBranches.forEach((branch,i)=>drawLeft(branch,anchors(leftBranches.length)[i]));
   rightBranches.forEach((branch,i)=>drawRight(branch,anchors(rightBranches.length)[i]));
 }
+
+function constrainBarrierRatio(barrier,ratio){
+  const branch=barrier.closest('.pathway-branch'),geometry=branch?._pathwayGeometry;
+  if(!branch||!geometry)return ratio;
+  const barriers=[...branch.querySelectorAll('.barrier-node')];
+  const length=Math.hypot(geometry.end[0]-geometry.start[0],geometry.end[1]-geometry.start[1])||1;
+  const gap=Math.min(.24,Math.max(.08,(barrier.offsetWidth+18)/length));
+  const positions=barriers.map((item,index)=>({item,ratio:manualBarrierPositions.get(item.dataset.barrierId)??(index+1)/(barriers.length+1)})).filter(item=>item.item!==barrier).sort((a,b)=>a.ratio-b.ratio);
+  const before=positions.filter(item=>item.ratio<ratio).at(-1),after=positions.find(item=>item.ratio>=ratio);
+  const lower=before?before.ratio+gap:.08,upper=after?after.ratio-gap:.92;
+  return Math.min(upper,Math.max(lower,ratio));
+}
+function updateDraggedBarrier(event){
+  if(!activeBarrierDrag)return;
+  const {barrier}=activeBarrierDrag,branch=barrier.closest('.pathway-branch'),geometry=branch?._pathwayGeometry,diagram=document.getElementById('diagram');
+  if(!geometry||!diagram)return;
+  const bounds=diagram.getBoundingClientRect(),x=event.clientX-bounds.left,y=event.clientY-bounds.top,dx=geometry.end[0]-geometry.start[0],dy=geometry.end[1]-geometry.start[1];
+  const ratio=constrainBarrierRatio(barrier,((x-geometry.start[0])*dx+(y-geometry.start[1])*dy)/(dx*dx+dy*dy));
+  manualBarrierPositions.set(barrier.dataset.barrierId,ratio);
+  drawConnectors();
+}
+document.addEventListener('pointerdown',event=>{
+  const barrier=event.target.closest?.('.barrier-node');
+  if(!barrier||event.button!==0||event.target.closest('input,textarea,select,button,label'))return;
+  activeBarrierDrag={barrier};barrier.classList.add('dragging');barrier.setPointerCapture?.(event.pointerId);event.preventDefault();
+});
+document.addEventListener('pointermove',updateDraggedBarrier);
+document.addEventListener('pointerup',event=>{if(!activeBarrierDrag)return;activeBarrierDrag.barrier.classList.remove('dragging');activeBarrierDrag.barrier.releasePointerCapture?.(event.pointerId);activeBarrierDrag=null});
 
 
 const printTextareaHeights=new Map();
