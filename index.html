@@ -152,8 +152,9 @@ textarea{resize:none!important;overflow:hidden!important;height:auto;transition:
 .diagram-connectors{z-index:1;overflow:hidden}
 .branch{z-index:3;display:block!important;min-height:164px;isolation:isolate}
 .branch:after,.right .branch:after{display:none!important}
-.pathway-endpoint{position:absolute;left:0;top:50%;width:var(--pathway-card-width);min-height:172px;transform:translateY(-50%);z-index:3}
+.pathway-endpoint{position:absolute;left:0;top:50%;width:var(--pathway-card-width);min-height:172px;transform:translateY(-50%);z-index:3;cursor:ew-resize;touch-action:none}
 .right .pathway-endpoint{left:auto;right:0}
+.pathway-endpoint.dragging{cursor:ew-resize;z-index:6}
 .stack{position:absolute;inset:0;z-index:3;display:block!important;pointer-events:none}
 .barrier-node{position:absolute;z-index:5;width:var(--pathway-card-width);min-height:172px;margin:0!important;transform:translate(-50%,-50%);cursor:grab;touch-action:none;pointer-events:auto}
 .barrier-node.dragging{cursor:grabbing;z-index:5}
@@ -335,6 +336,7 @@ document.addEventListener('input',e=>{if(e.target&&e.target.tagName==='TEXTAREA'
 let diagramLayoutFrame=0;
 // Position overrides are intentionally session-only: diagram adjustments do not alter saved project data.
 const manualBarrierPositions=new Map();
+const manualEndpointOffsets=new Map();
 let activeBarrierDrag=null;
 function scheduleDiagramLayout(){
   cancelAnimationFrame(diagramLayoutFrame);
@@ -356,7 +358,7 @@ function layoutDiagram(){
     const cards=[...item.querySelectorAll('.barrier-node,.pathway-endpoint')];
     const tallestCard=Math.max(172,...cards.map(card=>card.offsetHeight));
     // Two full card heights keep the diagonal portion of this route clear of its neighbours.
-    return Math.max(420,tallestCard*2+64,192+item.querySelectorAll('.barrier-node').length*120);
+    return Math.max(390,tallestCard*2+40,192+item.querySelectorAll('.barrier-node').length*112);
   };
   // Pathways reserve only their own space; opposing rows never determine their geometry.
   pathways.forEach(item=>{item.style.minHeight=pathwayHeight(item)+'px'});
@@ -375,6 +377,7 @@ function layoutDiagram(){
 function drawConnectors(){
   const diagram=document.getElementById('diagram'),svg=document.getElementById('connectorLayer'),top=document.getElementById('topEventNode');
   if(!diagram||!svg||!top)return;
+  document.querySelectorAll('.pathway-branch').forEach(branch=>{const offset=manualEndpointOffsets.get(branch.dataset.pathwayId),endpoint=branch.querySelector('.pathway-endpoint');if(offset===undefined||!endpoint)return;if(branch.dataset.side==='left')endpoint.style.left=offset+'px';else endpoint.style.right=offset+'px'});
   const bounds=diagram.getBoundingClientRect(),topRect=top.getBoundingClientRect(),width=Math.max(1,diagram.clientWidth),height=Math.max(1,diagram.clientHeight);
   svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.setAttribute('preserveAspectRatio','none');svg.innerHTML='';
   const ns='http://www.w3.org/2000/svg',px=x=>x-bounds.left,py=y=>y-bounds.top;
@@ -401,6 +404,13 @@ function constrainBarrierRatio(barrier,ratio){
 }
 function updateDraggedBarrier(event){
   if(!activeBarrierDrag)return;
+  if(activeBarrierDrag.type==='endpoint'){
+    const {endpoint,branch,startX,initialOffset}=activeBarrierDrag,delta=event.clientX-startX,maxOffset=Math.max(-140,branch.clientWidth-endpoint.offsetWidth-100),offset=Math.min(maxOffset,Math.max(-140,initialOffset+(branch.dataset.side==='left'?delta:-delta)));
+    manualEndpointOffsets.set(branch.dataset.pathwayId,offset);
+    if(branch.dataset.side==='left')endpoint.style.left=offset+'px';else endpoint.style.right=offset+'px';
+    drawConnectors();
+    return;
+  }
   const {barrier}=activeBarrierDrag,branch=barrier.closest('.pathway-branch'),geometry=branch?._pathwayGeometry,diagram=document.getElementById('diagram');
   if(!geometry||!diagram)return;
   const bounds=diagram.getBoundingClientRect(),x=event.clientX-bounds.left,y=event.clientY-bounds.top,dx=geometry.end[0]-geometry.start[0],dy=geometry.end[1]-geometry.start[1];
@@ -410,11 +420,15 @@ function updateDraggedBarrier(event){
 }
 document.addEventListener('pointerdown',event=>{
   const barrier=event.target.closest?.('.barrier-node');
-  if(!barrier||event.button!==0||event.target.closest('input,textarea,select,button,label'))return;
-  activeBarrierDrag={barrier};barrier.classList.add('dragging');barrier.setPointerCapture?.(event.pointerId);event.preventDefault();
+  if(event.button!==0||event.target.closest('input,textarea,select,button,label'))return;
+  if(barrier){activeBarrierDrag={type:'barrier',barrier};barrier.classList.add('dragging');barrier.setPointerCapture?.(event.pointerId);event.preventDefault();return}
+  const endpoint=event.target.closest?.('.pathway-endpoint'),branch=endpoint?.closest('.pathway-branch');
+  if(!endpoint||!branch)return;
+  const initialOffset=manualEndpointOffsets.get(branch.dataset.pathwayId)??0;
+  activeBarrierDrag={type:'endpoint',endpoint,branch,startX:event.clientX,initialOffset};endpoint.classList.add('dragging');endpoint.setPointerCapture?.(event.pointerId);event.preventDefault();
 });
 document.addEventListener('pointermove',updateDraggedBarrier);
-document.addEventListener('pointerup',event=>{if(!activeBarrierDrag)return;activeBarrierDrag.barrier.classList.remove('dragging');activeBarrierDrag.barrier.releasePointerCapture?.(event.pointerId);activeBarrierDrag=null});
+document.addEventListener('pointerup',event=>{if(!activeBarrierDrag)return;const target=activeBarrierDrag.barrier||activeBarrierDrag.endpoint;target.classList.remove('dragging');target.releasePointerCapture?.(event.pointerId);activeBarrierDrag=null});
 
 
 const printTextareaHeights=new Map();
