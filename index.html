@@ -152,9 +152,9 @@ textarea{resize:none!important;overflow:hidden!important;height:auto;transition:
 .diagram-connectors{z-index:1;overflow:visible}
 .branch{z-index:auto;display:block!important;min-height:164px;isolation:auto}
 .branch:after,.right .branch:after{display:none!important}
-.pathway-endpoint{position:absolute;left:0;top:50%;width:var(--pathway-card-width);min-height:172px;transform:translateY(-50%);z-index:3;cursor:ew-resize;touch-action:none}
+.pathway-endpoint{position:absolute;left:0;top:50%;width:var(--pathway-card-width);min-height:172px;transform:translateY(-50%);z-index:3;cursor:move;touch-action:none}
 .right .pathway-endpoint{left:auto;right:0}
-.pathway-endpoint.dragging{cursor:ew-resize;z-index:6}
+.pathway-endpoint.dragging{cursor:move;z-index:6}
 .stack{position:absolute;inset:0;z-index:3;display:block!important;pointer-events:none}
 .barrier-node{position:absolute;z-index:5;width:var(--pathway-card-width);min-height:172px;margin:0!important;transform:translate(-50%,-50%);cursor:grab;touch-action:none;pointer-events:auto}
 .barrier-node.dragging{cursor:grabbing;z-index:5}
@@ -279,7 +279,7 @@ let model={threats:[],consequences:[],actions:[]};
 const uid=()=>Math.random().toString(36).slice(2,9);
 const STATUS_OPTIONS=['Effective','Degraded','Failed','Not Verified'];
 const ASSURANCE_METHOD_OPTIONS=['Inspection','Functional Test','Preventive Maintenance','Calibration','Audit','Competency Assessment','Monitoring','Other'];
-const EVIDENCE_OPTIONS=['Maintenance Record','Inspection Record','Test Certificate','Audit Record','Training / Competency Record','CMMS / EAM Record','SCADA / Monitoring Data','Field Observation','Other','No Evidence Available'];
+const EVIDENCE_OPTIONS=['Maintenance Record','Inspection Record','Functional Test','Test Certificate','Audit Record','Training / Competency Record','CMMS / EAM Record','SCADA / Monitoring Data','Field Observation','Other','No Evidence Available'];
 function esc(s=''){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function slug(s=''){return String(s||'').toLowerCase().replace(/\s+/g,'-')}
 function normStatus(s=''){const v=String(s||'').toLowerCase();if(v==='not verified'||v==='not applicable')return'Not Verified';return s||'Effective'}
@@ -310,7 +310,7 @@ function barrierHTML(side,item,b,type){
   const evidenceOptions=['',...EVIDENCE_OPTIONS].map(x=>`<option value="${esc(x)}" ${evidence===x?'selected':''}>${x||'Evidence'}</option>`).join('');
   return `<div class="node ${type} barrier-node status-${slug(b.status)}" data-barrier-id="${b.id}" data-barrier-side="${side}" data-status="${esc(b.status)}" title="Drag along this pathway"><button class="remove no-print" title="Remove barrier" onclick="removeBarrier('${side}','${item.id}','${b.id}')">×</button><textarea oninput="setBarrier('${side}','${item.id}','${b.id}','name',this.value)" placeholder="Safeguard description" aria-label="Safeguard description">${esc(b.name)}</textarea><div class="badge-row"><span class="mini-badge status-${slug(b.status)}">● ${esc(b.status)}</span>${action?`<span class="mini-badge">Action linked</span>`:''}</div><select class="status-${slug(b.status)}" onchange="setBarrier('${side}','${item.id}','${b.id}','status',this.value)">${STATUS_OPTIONS.map(x=>`<option ${b.status===x?'selected':''}>${x}</option>`).join('')}</select><label class="compact-check"><input type="checkbox" ${b.criticalBarrier?'checked':''} onchange="setBarrier('${side}','${item.id}','${b.id}','criticalBarrier',this.checked)"> Critical Barrier</label><select onchange="setBarrier('${side}','${item.id}','${b.id}','assuranceActivity',this.value)">${methodOptions}</select><select onchange="setBarrier('${side}','${item.id}','${b.id}','assuranceEvidence',this.value)">${evidenceOptions}</select><input value="${esc(owner)}" oninput="setBarrier('${side}','${item.id}','${b.id}','assuranceOwner',this.value)" placeholder="Owner">${statusPrompt(side,item,b)}</div>`
 }
-function pathwayEndpoint(side,item,kind){const h=pathwayHealth(item);return `<div class="node ${kind} pathway-endpoint"><button class="remove no-print" title="Remove ${kind}" onclick="removeItem('${side}','${item.id}')">×</button><h3>${kind==='threat'?'Threat':'Consequence'} <span class="tag">${kind==='threat'?'Cause':'Outcome'}</span><span class="mini-badge health-badge health-${slug(h)}">${h}</span></h3><input value="${esc(item.name)}" oninput="setItem('${side}','${item.id}','name',this.value)"><textarea oninput="setItem('${side}','${item.id}','description',this.value)" placeholder="${kind==='threat'?'Initiating mechanism or condition':'Credible outcome and receptors'}">${esc(item.description)}</textarea></div>`}
+function pathwayEndpoint(side,item,kind){const h=pathwayHealth(item);return `<div class="node ${kind} pathway-endpoint" title="Drag to adjust this pathway's length and vertical position"><button class="remove no-print" title="Remove ${kind}" onclick="removeItem('${side}','${item.id}')">×</button><h3>${kind==='threat'?'Threat':'Consequence'} <span class="tag">${kind==='threat'?'Cause':'Outcome'}</span><span class="mini-badge health-badge health-${slug(h)}">${h}</span></h3><input value="${esc(item.name)}" oninput="setItem('${side}','${item.id}','name',this.value)"><textarea oninput="setItem('${side}','${item.id}','description',this.value)" placeholder="${kind==='threat'?'Initiating mechanism or condition':'Credible outcome and receptors'}">${esc(item.description)}</textarea></div>`}
 function render(){model.threats=(model.threats||[]).map(t=>(t.barriers=(t.barriers||[]).map(normalizeBarrier),t));model.consequences=(model.consequences||[]).map(c=>(c.barriers=(c.barriers||[]).map(normalizeBarrier),c));model.actions=model.actions||[];document.getElementById('threats').innerHTML=model.threats.map(t=>`<div class="branch pathway-branch" data-side="left" data-pathway-id="${t.id}" data-health="${pathwayHealth(t)}">${pathwayEndpoint('threat',t,'threat')}<div class="stack">${t.barriers.map(b=>barrierHTML('threat',t,b,'preventive')).join('')}<button class="small-btn no-print" onclick="addBarrier('threat','${t.id}')">＋ Add preventive barrier</button></div></div>`).join('');document.getElementById('consequences').innerHTML=model.consequences.map(c=>`<div class="branch pathway-branch" data-side="right" data-pathway-id="${c.id}" data-health="${pathwayHealth(c)}"><div class="stack">${c.barriers.map(b=>barrierHTML('consequence',c,b,'mitigative')).join('')}<button class="small-btn no-print" onclick="addBarrier('consequence','${c.id}')">＋ Add mitigative barrier</button></div>${pathwayEndpoint('consequence',c,'consequence')}</div>`).join('');document.getElementById('threatCount').textContent=model.threats.length;document.getElementById('consequenceCount').textContent=model.consequences.length;document.getElementById('barrierCount').textContent=allBarriers().length;renderDashboard();renderActions();syncMirrors();autoGrowAll();scheduleDiagramLayout()}
 function validationWarnings(){let w=[];allBarriers().forEach(({b})=>{if(!b.name)w.push('Barrier has no description');if(!b.assuranceActivity)w.push('Barrier has no assurance activity')});return w}
 let activeFilter='all';function setFilter(f){activeFilter=f;document.querySelectorAll('.barrier-node').forEach(el=>{const id=el.dataset.barrierId;const rec=allBarriers().find(x=>x.b.id===id);let show=f==='all'||(f==='criticalImpaired'&&rec.b.criticalBarrier&&['Degraded','Failed'].includes(rec.b.status))||(f==='assuranceOverdue'&&rec.b.assuranceStatus==='Overdue')||(f==='noEvidence'&&rec.b.assuranceStatus==='No Evidence')||rec.b.status===f;el.classList.toggle('filtered-out',!show)});}
@@ -334,10 +334,12 @@ function autoGrowTextarea(el){if(!el)return;el.style.height='auto';const minHeig
 function autoGrowAll(){requestAnimationFrame(()=>{document.querySelectorAll('textarea').forEach(autoGrowTextarea);scheduleDiagramLayout();})}
 document.addEventListener('input',e=>{if(e.target&&e.target.tagName==='TEXTAREA'){autoGrowTextarea(e.target);scheduleDiagramLayout()}});window.addEventListener('load',autoGrowAll);window.addEventListener('resize',()=>{autoGrowAll();scheduleDiagramLayout()});
 let diagramLayoutFrame=0;
-// Position overrides are intentionally session-only: diagram adjustments do not alter saved project data.
+// Endpoint positions belong to their pathway so they survive re-renders, edits and project saves.
 const manualBarrierPositions=new Map();
-const manualEndpointOffsets=new Map();
+const manualEndpointPositions=new Map();
 let activeBarrierDrag=null;
+function endpointPosition(branch){const item=(branch.dataset.side==='left'?model.threats:model.consequences).find(pathway=>pathway.id===branch.dataset.pathwayId);return manualEndpointPositions.get(branch.dataset.pathwayId)??item?.endpointPosition}
+function setEndpointPosition(branch,position){manualEndpointPositions.set(branch.dataset.pathwayId,position);const items=branch.dataset.side==='left'?model.threats:model.consequences,item=items.find(pathway=>pathway.id===branch.dataset.pathwayId);if(item)item.endpointPosition=position}
 function scheduleDiagramLayout(){
   cancelAnimationFrame(diagramLayoutFrame);
   diagramLayoutFrame=requestAnimationFrame(()=>requestAnimationFrame(layoutDiagram));
@@ -377,7 +379,7 @@ function layoutDiagram(){
 function drawConnectors(){
   const diagram=document.getElementById('diagram'),svg=document.getElementById('connectorLayer'),top=document.getElementById('topEventNode');
   if(!diagram||!svg||!top)return;
-  document.querySelectorAll('.pathway-branch').forEach(branch=>{const offset=manualEndpointOffsets.get(branch.dataset.pathwayId),endpoint=branch.querySelector('.pathway-endpoint');if(offset===undefined||!endpoint)return;if(branch.dataset.side==='left')endpoint.style.left=offset+'px';else endpoint.style.right=offset+'px'});
+  document.querySelectorAll('.pathway-branch').forEach(branch=>{const position=endpointPosition(branch),endpoint=branch.querySelector('.pathway-endpoint');if(!position||!endpoint)return;if(branch.dataset.side==='left')endpoint.style.left=position.x+'px';else endpoint.style.right=position.x+'px';endpoint.style.top=`calc(50% + ${position.y}px)`});
   const bounds=diagram.getBoundingClientRect(),topRect=top.getBoundingClientRect(),width=Math.max(1,diagram.clientWidth),height=Math.max(1,diagram.clientHeight);
   svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.setAttribute('preserveAspectRatio','none');svg.innerHTML='';
   const ns='http://www.w3.org/2000/svg',px=x=>x-bounds.left,py=y=>y-bounds.top;
@@ -405,9 +407,10 @@ function constrainBarrierRatio(barrier,ratio){
 function updateDraggedBarrier(event){
   if(!activeBarrierDrag)return;
   if(activeBarrierDrag.type==='endpoint'){
-    const {endpoint,branch,startX,initialOffset}=activeBarrierDrag,delta=event.clientX-startX,maxOffset=Math.max(-140,branch.clientWidth-endpoint.offsetWidth-100),offset=Math.min(maxOffset,Math.max(-140,initialOffset+(branch.dataset.side==='left'?delta:-delta)));
-    manualEndpointOffsets.set(branch.dataset.pathwayId,offset);
-    if(branch.dataset.side==='left')endpoint.style.left=offset+'px';else endpoint.style.right=offset+'px';
+    const {endpoint,branch,startX,startY,initialPosition}=activeBarrierDrag,deltaX=event.clientX-startX,deltaY=event.clientY-startY,maxX=Math.max(-140,branch.clientWidth-endpoint.offsetWidth-100),maxY=Math.max(0,(branch.clientHeight-endpoint.offsetHeight)/2),x=Math.min(maxX,Math.max(-140,initialPosition.x+(branch.dataset.side==='left'?deltaX:-deltaX))),y=Math.min(maxY,Math.max(-maxY,initialPosition.y+deltaY));
+    setEndpointPosition(branch,{x,y});
+    if(branch.dataset.side==='left')endpoint.style.left=x+'px';else endpoint.style.right=x+'px';
+    endpoint.style.top=`calc(50% + ${y}px)`;
     drawConnectors();
     return;
   }
@@ -424,8 +427,8 @@ document.addEventListener('pointerdown',event=>{
   if(barrier){activeBarrierDrag={type:'barrier',barrier};barrier.classList.add('dragging');barrier.setPointerCapture?.(event.pointerId);event.preventDefault();return}
   const endpoint=event.target.closest?.('.pathway-endpoint'),branch=endpoint?.closest('.pathway-branch');
   if(!endpoint||!branch)return;
-  const initialOffset=manualEndpointOffsets.get(branch.dataset.pathwayId)??0;
-  activeBarrierDrag={type:'endpoint',endpoint,branch,startX:event.clientX,initialOffset};endpoint.classList.add('dragging');endpoint.setPointerCapture?.(event.pointerId);event.preventDefault();
+  const initialPosition=endpointPosition(branch)??{x:0,y:0};
+  activeBarrierDrag={type:'endpoint',endpoint,branch,startX:event.clientX,startY:event.clientY,initialPosition};endpoint.classList.add('dragging');endpoint.setPointerCapture?.(event.pointerId);event.preventDefault();
 });
 document.addEventListener('pointermove',updateDraggedBarrier);
 document.addEventListener('pointerup',event=>{if(!activeBarrierDrag)return;const target=activeBarrierDrag.barrier||activeBarrierDrag.endpoint;target.classList.remove('dragging');target.releasePointerCapture?.(event.pointerId);activeBarrierDrag=null});
