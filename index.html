@@ -485,9 +485,9 @@ function diagramExportMarkup(){
   return {crop,markup:`<div class="diagram-crop" style="width:${crop.width}px;height:${crop.height}px"><div class="diagram-source" style="width:${diagram.clientWidth}px;height:${diagram.clientHeight}px;transform:translate(${-crop.left}px,${-crop.top}px)">${clone.outerHTML}</div></div>`};
 }
 function metadataExportMarkup(){
-  const source=document.querySelector('.meta-panel');if(!source)return {markup:'',height:0};
+  const source=document.querySelector('.meta-panel');if(!source)return '';
   const copy=source.cloneNode(true);copy.querySelectorAll('.no-print,button').forEach(el=>el.remove());copy.querySelector('.meta')?.classList.remove('collapsed');copyFormValues(source,copy);
-  return {markup:`<section class="export-metadata">${copy.outerHTML}</section>`,height:Math.max(240,Math.ceil(source.getBoundingClientRect().height))};
+  return `<section class="metadata-page"><div class="metadata-heading"><h1>Study details</h1><p>Assessment information captured with this bow-tie.</p></div>${copy.outerHTML}</section>`;
 }
 function actionRegisterMarkup(){
   const table=document.querySelector('.actions-panel');if(!table)return '';
@@ -499,12 +499,12 @@ function printDiagram(){
   try{
     const exported=diagramExportMarkup(),landscape=exported.crop.width>=exported.crop.height;
     const pageWidth=landscape?1511:1046,pageHeight=landscape?1046:1511;
-    const details=metadataExportMarkup(),diagramHeight=Math.max(100,pageHeight-details.height-18);
-    const scale=Math.min(pageWidth/exported.crop.width,diagramHeight/exported.crop.height);
+    const details=metadataExportMarkup();
+    const scale=Math.min(pageWidth/exported.crop.width,pageHeight/exported.crop.height);
     const pageTitle=document.getElementById('title').value||'Bow-Tie Risk Model';
     printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(pageTitle)}</title><style>${exportStyles()}
-      @page{size:A3 ${landscape?'landscape':'portrait'};margin:10mm}*{box-sizing:border-box}html,body{margin:0;background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.export-page{width:${pageWidth}px;height:${pageHeight}px;overflow:hidden}.export-metadata{width:${pageWidth}px;margin:0 0 18px}.export-metadata .meta-panel{margin:0}.export-metadata .panel-head{padding:10px 14px}.export-metadata .meta{padding:12px 14px}.export-metadata .field input,.export-metadata .field textarea,.export-metadata .field select{background:#fff}.diagram-page{width:${pageWidth}px;height:${diagramHeight}px;display:flex;align-items:center;justify-content:center;overflow:hidden}.diagram-crop{position:relative;overflow:hidden;flex:none;transform:scale(${scale});transform-origin:center}.diagram-source{position:relative;transform-origin:top left}.actions-page{break-before:page;page-break-before:always}.actions-panel{border:0}.actions-panel .panel-head{padding:0 0 10px}.actions-panel .workspace{overflow:visible}.actions-table{width:100%;border-collapse:collapse;font-size:9px}.actions-table th,.actions-table td{border:1px solid #d7dce5;padding:5px;text-align:left;vertical-align:top}.actions-table th{background:#f3f5f8}.actions-table input,.actions-table select,.actions-table textarea{width:100%;border:0;background:transparent;font:inherit;padding:0;resize:none}textarea{height:auto;overflow:visible}
-    </style></head><body><main class="export-page">${details.markup}<section class="diagram-page" id="diagramPage">${exported.markup}</section></main><section class="actions-page">${actionRegisterMarkup()}</section><script>window.onload=()=>setTimeout(()=>window.print(),100)<\/script></body></html>`);
+      @page{size:A3 ${landscape?'landscape':'portrait'};margin:10mm}*{box-sizing:border-box}html,body{margin:0;background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.export-page{width:${pageWidth}px;height:${pageHeight}px;overflow:hidden}.diagram-page{width:${pageWidth}px;height:${pageHeight}px;display:flex;align-items:center;justify-content:center;overflow:hidden}.diagram-crop{position:relative;overflow:hidden;flex:none;transform:scale(${scale});transform-origin:center}.diagram-source{position:relative;transform-origin:top left}.actions-page,.metadata-page{break-before:page;page-break-before:always}.metadata-page{width:${pageWidth}px}.metadata-heading{margin:0 0 14px}.metadata-heading h1{margin:0;font-size:22px}.metadata-heading p{margin:4px 0 0;color:#718096}.metadata-page .meta-panel{margin:0}.metadata-page .panel-head{padding:10px 14px}.metadata-page .meta{padding:12px 14px}.metadata-page .field input,.metadata-page .field textarea,.metadata-page .field select{background:#fff}.actions-panel{border:0}.actions-panel .panel-head{padding:0 0 10px}.actions-panel .workspace{overflow:visible}.actions-table{width:100%;border-collapse:collapse;font-size:9px}.actions-table th,.actions-table td{border:1px solid #d7dce5;padding:5px;text-align:left;vertical-align:top}.actions-table th{background:#f3f5f8}.actions-table input,.actions-table select,.actions-table textarea{width:100%;border:0;background:transparent;font:inherit;padding:0;resize:none}textarea{height:auto;overflow:visible}
+    </style></head><body><main class="export-page"><section class="diagram-page" id="diagramPage">${exported.markup}</section></main><section class="actions-page">${actionRegisterMarkup()}</section>${details}<script>window.onload=()=>setTimeout(()=>window.print(),100)<\/script></body></html>`);
     printWindow.document.close();
   }catch(error){printWindow.close();console.error(error);notify('Unable to prepare the diagram for export.');}
 }
