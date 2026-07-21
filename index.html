@@ -218,7 +218,7 @@ textarea{resize:none!important;overflow:hidden!important;height:auto;transition:
 <header class="topbar">
   <div class="brand"><div class="brand-mark">BT</div><div class="brand-copy"><strong>BowTie Studio</strong><span>Editable barrier risk model</span></div></div>
   <div class="toolbar">
-    <button class="btn btn-primary" onclick="window.print()">⤓ <span>Print / PDF</span></button>
+    <button class="btn btn-primary" onclick="printDiagram()">⤓ <span>Print / PDF</span></button>
     <button class="btn btn-ghost" onclick="exportJSON()">⇩ <span>Export</span></button>
     <label class="file-label">⇧ <span>Import</span><input type="file" accept="application/json" onchange="importJSON(event)"></label>
     <button class="btn btn-ghost" onclick="saveLocal()">● <span>Save</span></button>
@@ -443,11 +443,71 @@ document.addEventListener('pointermove',updateDraggedBarrier);
 document.addEventListener('pointerup',event=>{if(!activeBarrierDrag)return;const target=activeBarrierDrag.barrier||activeBarrierDrag.endpoint;target.classList.remove('dragging');target.releasePointerCapture?.(event.pointerId);activeBarrierDrag=null});
 
 
-const printTextareaHeights=new Map();
-let preparingPrint=false;
-function preparePrint(){if(preparingPrint)return;preparingPrint=true;document.querySelectorAll('textarea').forEach((el,i)=>{printTextareaHeights.set(el,el.style.height);el.style.height='auto';el.style.height=Math.max(el.scrollHeight,24)+'px';el.style.overflow='hidden';});layoutDiagram();drawConnectors();const inner=document.querySelector('.workspace-inner'),diagram=document.getElementById('diagram');if(inner&&diagram){const maxW=1040,maxH=720;const scale=Math.min(1,maxW/Math.max(diagram.scrollWidth,1),maxH/Math.max(diagram.scrollHeight,1));inner.style.setProperty('--print-scale',scale.toFixed(3));}}
-function restoreAfterPrint(){const inner=document.querySelector('.workspace-inner');if(inner)inner.style.removeProperty('--print-scale');printTextareaHeights.clear();preparingPrint=false;autoGrowAll();}
-window.addEventListener('beforeprint',preparePrint);window.addEventListener('afterprint',restoreAfterPrint);
+const EXPORT_MARGIN=24;
+function visibleExportElements(){
+  return [...document.querySelectorAll('#diagram .pathway-endpoint, #diagram .barrier-node, #diagram .core-node, #diagram .core-line')]
+    .filter(el=>!el.classList.contains('filtered-out')&&getComputedStyle(el).display!=='none');
+}
+function unionExportBounds(){
+  const diagram=document.getElementById('diagram'),base=diagram.getBoundingClientRect();
+  const rects=visibleExportElements().map(el=>el.getBoundingClientRect());
+  // SVG path bounds are used rather than the SVG viewport: this deliberately excludes empty canvas.
+  document.querySelectorAll('#connectorLayer path').forEach(path=>{
+    try{const box=path.getBoundingClientRect();if(box.width||box.height)rects.push(box)}catch(_){/* ignored: non-rendered SVG path */}
+  });
+  if(!rects.length)return {left:0,top:0,width:diagram.clientWidth,height:diagram.clientHeight};
+  // Do not clamp to the diagram element: positioned cards can legitimately extend past its CSS box.
+  const left=Math.min(...rects.map(r=>r.left))-EXPORT_MARGIN;
+  const top=Math.min(...rects.map(r=>r.top))-EXPORT_MARGIN;
+  const right=Math.max(...rects.map(r=>r.right))+EXPORT_MARGIN;
+  const bottom=Math.max(...rects.map(r=>r.bottom))+EXPORT_MARGIN;
+  return {left:left-base.left,top:top-base.top,width:right-left,height:bottom-top};
+}
+function copyFormValues(source,copy){
+  source.querySelectorAll('input,textarea,select').forEach((field,index)=>{
+    const target=copy.querySelectorAll('input,textarea,select')[index];if(!target)return;
+    if(field.tagName==='TEXTAREA')target.textContent=field.value;
+    else if(field.tagName==='SELECT')[...target.options].forEach((option,i)=>option.selected=field.options[i].selected);
+    else target.setAttribute('value',field.value);
+  });
+}
+function exportStyles(){
+  // The source page's print rules deliberately rebuild the editor; do not bring them into the export document.
+  return [...document.querySelectorAll('style')].map(style=>style.textContent.replace(/@media\s+print\s*\{/gi,'@media print-disabled{')).join('\n');
+}
+function diagramExportMarkup(){
+  const diagram=document.getElementById('diagram');
+  drawConnectors();
+  const crop=unionExportBounds(),clone=diagram.cloneNode(true);
+  clone.querySelectorAll('.no-print,.remove,.add-btn,.small-btn,.connector-handle,.section-label').forEach(el=>el.remove());
+  copyFormValues(diagram,clone);
+  // Preserve the already-calculated editor dimensions and positions. Nothing is laid out from project data here.
+  return {crop,markup:`<div class="diagram-crop" style="width:${crop.width}px;height:${crop.height}px"><div class="diagram-source" style="width:${diagram.clientWidth}px;height:${diagram.clientHeight}px;transform:translate(${-crop.left}px,${-crop.top}px)">${clone.outerHTML}</div></div>`};
+}
+function metadataExportMarkup(){
+  const source=document.querySelector('.meta-panel');if(!source)return {markup:'',height:0};
+  const copy=source.cloneNode(true);copy.querySelectorAll('.no-print,button').forEach(el=>el.remove());copy.querySelector('.meta')?.classList.remove('collapsed');copyFormValues(source,copy);
+  return {markup:`<section class="export-metadata">${copy.outerHTML}</section>`,height:Math.max(240,Math.ceil(source.getBoundingClientRect().height))};
+}
+function actionRegisterMarkup(){
+  const table=document.querySelector('.actions-panel');if(!table)return '';
+  const copy=table.cloneNode(true);copy.querySelectorAll('button').forEach(el=>el.remove());copyFormValues(table,copy);return copy.outerHTML;
+}
+function printDiagram(){
+  const printWindow=window.open('','_blank');
+  if(!printWindow){notify('Allow pop-ups to export the PDF.');return}
+  try{
+    const exported=diagramExportMarkup(),landscape=exported.crop.width>=exported.crop.height;
+    const pageWidth=landscape?1511:1046,pageHeight=landscape?1046:1511;
+    const details=metadataExportMarkup(),diagramHeight=Math.max(100,pageHeight-details.height-18);
+    const scale=Math.min(pageWidth/exported.crop.width,diagramHeight/exported.crop.height);
+    const pageTitle=document.getElementById('title').value||'Bow-Tie Risk Model';
+    printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(pageTitle)}</title><style>${exportStyles()}
+      @page{size:A3 ${landscape?'landscape':'portrait'};margin:10mm}*{box-sizing:border-box}html,body{margin:0;background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.export-page{width:${pageWidth}px;height:${pageHeight}px;overflow:hidden}.export-metadata{width:${pageWidth}px;margin:0 0 18px}.export-metadata .meta-panel{margin:0}.export-metadata .panel-head{padding:10px 14px}.export-metadata .meta{padding:12px 14px}.export-metadata .field input,.export-metadata .field textarea,.export-metadata .field select{background:#fff}.diagram-page{width:${pageWidth}px;height:${diagramHeight}px;display:flex;align-items:center;justify-content:center;overflow:hidden}.diagram-crop{position:relative;overflow:hidden;flex:none;transform:scale(${scale});transform-origin:center}.diagram-source{position:relative;transform-origin:top left}.actions-page{break-before:page;page-break-before:always}.actions-panel{border:0}.actions-panel .panel-head{padding:0 0 10px}.actions-panel .workspace{overflow:visible}.actions-table{width:100%;border-collapse:collapse;font-size:9px}.actions-table th,.actions-table td{border:1px solid #d7dce5;padding:5px;text-align:left;vertical-align:top}.actions-table th{background:#f3f5f8}.actions-table input,.actions-table select,.actions-table textarea{width:100%;border:0;background:transparent;font:inherit;padding:0;resize:none}textarea{height:auto;overflow:visible}
+    </style></head><body><main class="export-page">${details.markup}<section class="diagram-page" id="diagramPage">${exported.markup}</section></main><section class="actions-page">${actionRegisterMarkup()}</section><script>window.onload=()=>setTimeout(()=>window.print(),100)<\/script></body></html>`);
+    printWindow.document.close();
+  }catch(error){printWindow.close();console.error(error);notify('Unable to prepare the diagram for export.');}
+}
 document.getElementById('hazardText').addEventListener('input',syncMirrors);document.getElementById('topText').addEventListener('input',syncMirrors);
 addThreat({id:uid(),name:'Overpressure',description:'Pressure exceeds the safe operating envelope.',barriers:[{...newBarrier('preventive'),name:'Independent pressure protection'}]});
 addThreat({id:uid(),name:'Incorrect isolation',description:'Containment opened or equipment started without effective isolation.',barriers:[{...newBarrier('preventive'),name:'Verified positive isolation'}]});
